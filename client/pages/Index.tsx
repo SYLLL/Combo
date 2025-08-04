@@ -88,9 +88,9 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
-        <h1 className="text-2xl font-semibold text-foreground">Product Compliance Hub</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+      <header className="border-b bg-card px-4 sm:px-6 py-4">
+        <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Product Compliance Hub</h1>
+        <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
           Streamline product requirements review and compliance analysis
         </p>
       </header>
