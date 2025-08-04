@@ -100,7 +100,7 @@ export default function Index() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           
           {/* Launch Compliance Section */}
-          <Card className="lg:col-span-1">
+          <Card className="md:col-span-2 lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
