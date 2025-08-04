@@ -5,11 +5,14 @@ import {
   CheckCircle,
   AlertTriangle,
   Info,
+  Github,
+  Scale,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 interface AnalysisResult {
   status: "pending" | "good" | "questions" | "issues";
@@ -40,6 +43,20 @@ export default function Index() {
     "Adding a daily mode toggle to user profile",
   );
   const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
+  const [githubUrl, setGithubUrl] = useState('');
+  const [githubUrlError, setGithubUrlError] = useState('');
+  const [settlementFiles, setSettlementFiles] = useState<File[]>([]);
+  const [settlementDragActive, setSettlementDragActive] = useState(false);
+  const [isUploadingSettlements, setIsUploadingSettlements] = useState(false);
+  const [settlementUploadStatus, setSettlementUploadStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: '' });
 
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
@@ -93,6 +110,164 @@ export default function Index() {
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setUploadedFile(e.target.files[0]);
+    }
+  };
+
+  const validateGitHubUrl = (url: string): boolean => {
+    if (!url.trim()) return true; // Empty URL is valid (optional field)
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'github.com' && urlObj.pathname.split('/').length >= 3;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleGithubUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const url = e.target.value;
+    setGithubUrl(url);
+    
+    if (url.trim() && !validateGitHubUrl(url)) {
+      setGithubUrlError('Please enter a valid GitHub repository URL');
+    } else {
+      setGithubUrlError('');
+    }
+  };
+
+  // Settlement file handlers
+  const handleSettlementDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setSettlementDragActive(true);
+    } else if (e.type === "dragleave") {
+      setSettlementDragActive(false);
+    }
+  }, []);
+
+  const handleSettlementDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSettlementDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+        file.type === 'application/pdf'
+      );
+      setSettlementFiles(prev => [...prev, ...newFiles]);
+    }
+  }, []);
+
+  const handleSettlementFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).filter(file => 
+        file.type === 'application/pdf'
+      );
+      setSettlementFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeSettlementFile = (index: number) => {
+    setSettlementFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadSettlements = async () => {
+    if (settlementFiles.length === 0) {
+      return;
+    }
+
+    setIsUploadingSettlements(true);
+    setSettlementUploadStatus({ type: null, message: '' });
+
+    try {
+      const formData = new FormData();
+      settlementFiles.forEach((file, index) => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch('/api/upload-settlements', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Settlement files uploaded successfully:', result);
+        setSettlementUploadStatus({
+          type: 'success',
+          message: `${result.uploadedCount} settlement files uploaded successfully`
+        });
+        setSettlementFiles([]); // Clear the files after successful upload
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        console.error('Settlement upload failed:', errorData.message);
+        setSettlementUploadStatus({
+          type: 'error',
+          message: errorData.message || 'Upload failed'
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading settlement files:', error);
+      setSettlementUploadStatus({
+        type: 'error',
+        message: 'Network error occurred while uploading settlement files'
+      });
+    } finally {
+      setIsUploadingSettlements(false);
+    }
+  };
+
+  const handleRequestLegalReview = async () => {
+    if (!uploadedFile) {
+      return;
+    }
+
+    if (githubUrlError) {
+      setUploadStatus({
+        type: 'error',
+        message: 'Please fix the GitHub URL format before submitting'
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus({ type: null, message: '' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('productDescription', productDescription);
+      if (githubUrl.trim()) {
+        formData.append('githubUrl', githubUrl.trim());
+      }
+
+      const response = await fetch('/api/upload-requirements', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('File uploaded successfully:', result);
+        setUploadStatus({
+          type: 'success',
+          message: `File uploaded successfully: ${result.filename}`
+        });
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        console.error('Upload failed:', errorData.message);
+        setUploadStatus({
+          type: 'error',
+          message: errorData.message || 'Upload failed'
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setUploadStatus({
+        type: 'error',
+        message: 'Network error occurred while uploading file'
+      });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -182,6 +357,36 @@ export default function Index() {
               </div>
 
               <div>
+                <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                  <Github className="h-4 w-4" />
+                  GitHub Repository URL (Optional)
+                </label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Input
+                      type="url"
+                      placeholder="https://github.com/username/repository"
+                      value={githubUrl}
+                      onChange={handleGithubUrlChange}
+                      className={`text-sm ${githubUrlError ? 'border-red-500' : ''}`}
+                    />
+                    {githubUrl && !githubUrlError && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                  {githubUrlError ? (
+                    <p className="text-xs text-red-500">{githubUrlError}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Paste your GitHub repository URL to provide code context for the review
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <h3 className="text-sm font-medium text-foreground mb-3">
                   Analysis
                 </h3>
@@ -206,9 +411,24 @@ export default function Index() {
                     </div>
                   </div>
                 </div>
-                <Button variant="outline" className="w-full mt-4">
-                  Request legal review
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-4"
+                  onClick={handleRequestLegalReview}
+                  disabled={!uploadedFile || isUploading}
+                >
+                  {isUploading ? 'Uploading...' : 'Request legal review'}
                 </Button>
+                
+                {uploadStatus.type && (
+                  <div className={`mt-3 p-3 rounded-md text-sm ${
+                    uploadStatus.type === 'success' 
+                      ? 'bg-green-50 text-green-800 border border-green-200' 
+                      : 'bg-red-50 text-red-800 border border-red-200'
+                  }`}>
+                    {uploadStatus.message}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -286,6 +506,106 @@ export default function Index() {
                   ))}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Company Settlements Section */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Scale className="h-5 w-5 text-primary" />
+                Company Settlements
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Upload company settlement PDF files for legal review and reference.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">
+                  Settlement Documents
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                    settlementDragActive
+                      ? "border-primary bg-accent/50"
+                      : "border-muted-foreground/30 hover:border-muted-foreground/50"
+                  }`}
+                  onDragEnter={handleSettlementDrag}
+                  onDragLeave={handleSettlementDrag}
+                  onDragOver={handleSettlementDrag}
+                  onDrop={handleSettlementDrop}
+                >
+                  <input
+                    type="file"
+                    id="settlement-file-upload"
+                    className="hidden"
+                    onChange={handleSettlementFileInput}
+                    accept=".pdf"
+                    multiple
+                  />
+                  <label htmlFor="settlement-file-upload" className="cursor-pointer">
+                    <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        Drag and drop PDF files or click to select
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PDF files only
+                      </p>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {settlementFiles.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-foreground mb-2">
+                    Selected Files ({settlementFiles.length})
+                  </h3>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {settlementFiles.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {file.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeSettlementFile(index)}
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={handleUploadSettlements}
+                disabled={settlementFiles.length === 0 || isUploadingSettlements}
+              >
+                {isUploadingSettlements ? 'Uploading...' : 'Upload Settlement Files'}
+              </Button>
+              
+              {settlementUploadStatus.type && (
+                <div className={`p-3 rounded-md text-sm ${
+                  settlementUploadStatus.type === 'success' 
+                    ? 'bg-green-50 text-green-800 border border-green-200' 
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {settlementUploadStatus.message}
+                </div>
+              )}
             </CardContent>
           </Card>
 

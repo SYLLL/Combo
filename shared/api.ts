@@ -10,3 +10,12 @@
 export interface DemoResponse {
   message: string;
 }
+
+/**
+ * Response type for file upload
+ */
+export interface UploadResponse {
+  success: boolean;
+  message: string;
+  filename?: string;
+}
