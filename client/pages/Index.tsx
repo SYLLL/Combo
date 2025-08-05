@@ -38,6 +38,25 @@ interface LegalReview {
   mitigations: string[];
 }
 
+interface ComplianceAnalysis {
+  coppa: {
+    compliance: string;
+    issues: string[];
+    recommendations: string[];
+  };
+  hipaa: {
+    compliance: string;
+    issues: string[];
+    recommendations: string[];
+  };
+  gdpr: {
+    compliance: string;
+    issues: string[];
+    recommendations: string[];
+  };
+  rawResponse?: string;
+}
+
 export default function Index() {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [productDescription, setProductDescription] = useState(
@@ -60,6 +79,7 @@ export default function Index() {
   }>({ type: null, message: '' });
   const [figmaUrl, setFigmaUrl] = useState('');
   const [figmaUrlError, setFigmaUrlError] = useState('');
+  const [complianceAnalysis, setComplianceAnalysis] = useState<ComplianceAnalysis | null>(null);
 
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
@@ -248,6 +268,7 @@ export default function Index() {
 
     setIsUploading(true);
     setUploadStatus({ type: null, message: '' });
+    setComplianceAnalysis(null);
 
     try {
       const formData = new FormData();
@@ -267,11 +288,16 @@ export default function Index() {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('File uploaded successfully:', result);
+        console.log('File uploaded and analyzed successfully:', result);
         setUploadStatus({
           type: 'success',
-          message: `File uploaded successfully: ${result.filename}`
+          message: `File uploaded and analyzed successfully: ${result.filename}`
         });
+        
+        // Set the compliance analysis results
+        if (result.complianceAnalysis) {
+          setComplianceAnalysis(result.complianceAnalysis);
+        }
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
         console.error('Upload failed:', errorData.message);
@@ -288,6 +314,36 @@ export default function Index() {
       });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const getComplianceBadgeColor = (compliance: string) => {
+    switch (compliance.toLowerCase()) {
+      case 'compliant':
+        return 'bg-green-100 text-green-800';
+      case 'non-compliant':
+        return 'bg-red-100 text-red-800';
+      case 'requires-review':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'error':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getComplianceBadgeText = (compliance: string) => {
+    switch (compliance.toLowerCase()) {
+      case 'compliant':
+        return 'Compliant';
+      case 'non-compliant':
+        return 'Non-Compliant';
+      case 'requires-review':
+        return 'Requires Review';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Unknown';
     }
   };
 
@@ -467,7 +523,7 @@ export default function Index() {
                   onClick={handleRequestLegalReview}
                   disabled={!uploadedFile || isUploading}
                 >
-                  {isUploading ? 'Uploading...' : 'Generate legal review'}
+                  {isUploading ? 'Analyzing...' : 'Generate legal review'}
                 </Button>
                 
                 {uploadStatus.type && (
@@ -793,64 +849,178 @@ export default function Index() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Facts
-                </h3>
-                <div className="space-y-2">
-                  {legalReview.facts.map((fact, index) => (
-                    <p key={index} className="text-sm text-muted-foreground">
-                      {fact}
-                    </p>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Notes
-                </h3>
-                <div className="space-y-2">
-                  {legalReview.notes.map((note, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
-                      <p className="text-sm text-muted-foreground">{note}</p>
+              {complianceAnalysis ? (
+                <>
+                  {/* COPPA Analysis */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-foreground">COPPA</h3>
+                      <Badge className={`text-xs ${getComplianceBadgeColor(complianceAnalysis.coppa.compliance)}`}>
+                        {getComplianceBadgeText(complianceAnalysis.coppa.compliance)}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    {complianceAnalysis.coppa.issues.length > 0 && (
+                      <div className="mb-2">
+                        <h4 className="text-xs font-medium text-foreground mb-1">Issues:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.coppa.issues.map((issue, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-red-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{issue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {complianceAnalysis.coppa.recommendations.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-foreground mb-1">Recommendations:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.coppa.recommendations.map((rec, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{rec}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Suggestions
-                </h3>
-                <div className="space-y-2">
-                  {legalReview.suggestions.map((suggestion, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
-                      <p className="text-sm text-muted-foreground">
-                        {suggestion}
-                      </p>
+                  {/* HIPAA Analysis */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-foreground">HIPAA</h3>
+                      <Badge className={`text-xs ${getComplianceBadgeColor(complianceAnalysis.hipaa.compliance)}`}>
+                        {getComplianceBadgeText(complianceAnalysis.hipaa.compliance)}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    {complianceAnalysis.hipaa.issues.length > 0 && (
+                      <div className="mb-2">
+                        <h4 className="text-xs font-medium text-foreground mb-1">Issues:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.hipaa.issues.map((issue, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-red-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{issue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {complianceAnalysis.hipaa.recommendations.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-foreground mb-1">Recommendations:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.hipaa.recommendations.map((rec, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{rec}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Mitigations
-                </h3>
-                <div className="space-y-2">
-                  {legalReview.mitigations.map((mitigation, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
-                      <p className="text-sm text-muted-foreground">
-                        {mitigation}
-                      </p>
+                  {/* GDPR Analysis */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="text-sm font-medium text-foreground">GDPR</h3>
+                      <Badge className={`text-xs ${getComplianceBadgeColor(complianceAnalysis.gdpr.compliance)}`}>
+                        {getComplianceBadgeText(complianceAnalysis.gdpr.compliance)}
+                      </Badge>
                     </div>
-                  ))}
-                </div>
-              </div>
+                    {complianceAnalysis.gdpr.issues.length > 0 && (
+                      <div className="mb-2">
+                        <h4 className="text-xs font-medium text-foreground mb-1">Issues:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.gdpr.issues.map((issue, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-red-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{issue}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {complianceAnalysis.gdpr.recommendations.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-medium text-foreground mb-1">Recommendations:</h4>
+                        <div className="space-y-1">
+                          {complianceAnalysis.gdpr.recommendations.map((rec, index) => (
+                            <div key={index} className="flex items-start gap-2">
+                              <div className="h-1.5 w-1.5 bg-blue-500 rounded-full mt-1.5" />
+                              <p className="text-xs text-muted-foreground">{rec}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground mb-2">
+                      Facts
+                    </h3>
+                    <div className="space-y-2">
+                      {legalReview.facts.map((fact, index) => (
+                        <p key={index} className="text-sm text-muted-foreground">
+                          {fact}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground mb-2">
+                      Notes
+                    </h3>
+                    <div className="space-y-2">
+                      {legalReview.notes.map((note, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
+                          <p className="text-sm text-muted-foreground">{note}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground mb-2">
+                      Suggestions
+                    </h3>
+                    <div className="space-y-2">
+                      {legalReview.suggestions.map((suggestion, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
+                          <p className="text-sm text-muted-foreground">
+                            {suggestion}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground mb-2">
+                      Mitigations
+                    </h3>
+                    <div className="space-y-2">
+                      {legalReview.mitigations.map((mitigation, index) => (
+                        <div key={index} className="flex items-start gap-2">
+                          <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
+                          <p className="text-sm text-muted-foreground">
+                            {mitigation}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
