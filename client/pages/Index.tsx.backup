@@ -141,7 +141,7 @@ export default function Index() {
     if (!url.trim()) return true; // Empty URL is valid (optional field)
     try {
       const urlObj = new URL(url);
-      return urlObj.hostname === 'www.figma.com' && urlObj.pathname.includes('/file/');
+      return urlObj.hostname === 'www.figma.com' || urlObj.hostname === 'figma.com';
     } catch {
       return false;
     }
@@ -152,12 +152,13 @@ export default function Index() {
     setFigmaUrl(url);
     
     if (url.trim() && !validateFigmaUrl(url)) {
-      setFigmaUrlError('Please enter a valid Figma design URL');
+      setFigmaUrlError('Please enter a valid Figma URL');
     } else {
       setFigmaUrlError('');
     }
   };
 
+  // Settlement file handlers
   const handleSettlementDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -172,15 +173,19 @@ export default function Index() {
     e.preventDefault();
     e.stopPropagation();
     setSettlementDragActive(false);
-    if (e.dataTransfer.files) {
-      const newFiles = Array.from(e.dataTransfer.files).filter(file => file.type === 'application/pdf');
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+        file.type === 'application/pdf'
+      );
       setSettlementFiles(prev => [...prev, ...newFiles]);
     }
   }, []);
 
   const handleSettlementFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).filter(file => file.type === 'application/pdf');
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).filter(file => 
+        file.type === 'application/pdf'
+      );
       setSettlementFiles(prev => [...prev, ...newFiles]);
     }
   };
@@ -190,7 +195,9 @@ export default function Index() {
   };
 
   const handleUploadSettlements = async () => {
-    if (settlementFiles.length === 0) return;
+    if (settlementFiles.length === 0) {
+      return;
+    }
 
     setIsUploadingSettlements(true);
     setSettlementUploadStatus({ type: null, message: '' });
@@ -211,12 +218,12 @@ export default function Index() {
         console.log('Settlement files uploaded successfully:', result);
         setSettlementUploadStatus({
           type: 'success',
-          message: `Successfully uploaded ${result.uploadedCount} settlement files`
+          message: `${result.uploadedCount} settlement files uploaded successfully`
         });
-        setSettlementFiles([]);
+        setSettlementFiles([]); // Clear the files after successful upload
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
-        console.error('Upload failed:', errorData.message);
+        console.error('Settlement upload failed:', errorData.message);
         setSettlementUploadStatus({
           type: 'error',
           message: errorData.message || 'Upload failed'
@@ -226,7 +233,7 @@ export default function Index() {
       console.error('Error uploading settlement files:', error);
       setSettlementUploadStatus({
         type: 'error',
-        message: 'Network error occurred while uploading files'
+        message: 'Network error occurred while uploading settlement files'
       });
     } finally {
       setIsUploadingSettlements(false);
@@ -730,60 +737,6 @@ export default function Index() {
             </CardContent>
           </Card>
 
-          {/* Data Flow Section */}
-          <Card className="lg:col-span-1">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="h-5 w-5 bg-primary rounded text-primary-foreground text-xs flex items-center justify-center font-bold">
-                  D
-                </div>
-                Data Flow
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Analyze data flow and privacy implications.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Data Sources
-                </h3>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
-                    <p className="text-xs text-muted-foreground">User input data</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                    <p className="text-xs text-muted-foreground">Third-party integrations</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
-                    <p className="text-xs text-muted-foreground">Analytics data</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-2">
-                  Privacy Impact
-                </h3>
-                <div className="bg-muted rounded-md p-3">
-                  <p className="text-xs text-muted-foreground">
-                    Data flow analysis will be performed to identify privacy implications and compliance requirements.
-                  </p>
-                </div>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full"
-              >
-                Analyze Data Flow
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* Product Legal Review Section */}
           <Card className="lg:col-span-1">
             <CardHeader>
@@ -853,6 +806,61 @@ export default function Index() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Data Flow Section */}
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="h-5 w-5 bg-primary rounded text-primary-foreground text-xs flex items-center justify-center font-bold">
+                  D
+                </div>
+                Data Flow
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Analyze data flow and privacy implications.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">
+                  Data Sources
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">User input data</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">Third-party integrations</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">Analytics data</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">
+                  Privacy Impact
+                </h3>
+                <div className="bg-muted rounded-md p-3">
+                  <p className="text-xs text-muted-foreground">
+                    Data flow analysis will be performed to identify privacy implications and compliance requirements.
+                  </p>
+                </div>
+              </div>
+
+              <Button 
+                variant="outline" 
+                className="w-full"
+              >
+                Analyze Data Flow
+              </Button>
+            </CardContent>
+          </Card>
+          </div>
         </div>
       </div>
     </div>
