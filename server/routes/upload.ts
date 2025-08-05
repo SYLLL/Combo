@@ -78,85 +78,146 @@ function isValidFigmaUrl(url: string): boolean {
   }
 }
 
+// Test function to check Gemini API connection
+export async function testGeminiConnection(): Promise<boolean> {
+  try {
+    console.log('Testing Gemini API connection...');
+    console.log('API Key (first 10 chars):', 'AIzaSyA2LlGf7OC1hQcRU67yuOU7KiPruYRMpbE'.substring(0, 10) + '...');
+    
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    console.log('Model created successfully');
+    
+    const result = await model.generateContent("Say 'Hello World'");
+    console.log('Content generation request sent');
+    
+    const response = await result.response;
+    const text = response.text();
+    console.log('Gemini API test successful:', text);
+    return true;
+  } catch (error) {
+    console.error('Gemini API test failed with error:', error);
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
+    return false;
+  }
+}
+
 // Function to analyze document with Gemini for compliance
 async function analyzeComplianceWithGemini(documentText: string, productDescription: string): Promise<any> {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
-Please analyze the following product requirements document and product description for compliance with COPPA, HIPAA, and GDPR regulations.
+You are a legal compliance expert. Analyze the following product requirements document and product description for compliance with COPPA, HIPAA, and GDPR regulations.
 
 Product Description: ${productDescription}
 
 Document Content: ${documentText}
 
-Please provide a detailed analysis for each regulation:
+IMPORTANT: You must respond with ONLY a valid JSON object. Do not include any other text, explanations, or markdown formatting.
 
-1. COPPA (Children's Online Privacy Protection Act):
-   - Does the product collect personal information from children under 13?
-   - What are the compliance requirements and potential issues?
-   - Recommendations for compliance
-
-2. HIPAA (Health Insurance Portability and Accountability Act):
-   - Does the product handle protected health information (PHI)?
-   - What are the compliance requirements and potential issues?
-   - Recommendations for compliance
-
-3. GDPR (General Data Protection Regulation):
-   - Does the product process personal data of EU residents?
-   - What are the compliance requirements and potential issues?
-   - Recommendations for compliance
-
-Please format your response as a JSON object with the following structure:
+Required JSON format (respond exactly like this):
 {
   "coppa": {
-    "compliance": "compliant/non-compliant/requires-review",
-    "issues": ["list of specific issues"],
-    "recommendations": ["list of recommendations"]
+    "compliance": "compliant",
+    "issues": ["No issues found"],
+    "recommendations": ["Continue current practices"]
   },
   "hipaa": {
-    "compliance": "compliant/non-compliant/requires-review",
-    "issues": ["list of specific issues"],
-    "recommendations": ["list of recommendations"]
+    "compliance": "non-compliant",
+    "issues": ["Handles health data without proper safeguards"],
+    "recommendations": ["Implement HIPAA-compliant data handling"]
   },
   "gdpr": {
-    "compliance": "compliant/non-compliant/requires-review",
-    "issues": ["list of specific issues"],
-    "recommendations": ["list of recommendations"]
+    "compliance": "requires-review",
+    "issues": ["May process EU user data"],
+    "recommendations": ["Conduct detailed GDPR assessment"]
   }
 }
+
+Analysis guidelines:
+- COPPA: Check if the product collects personal information from children under 13
+- HIPAA: Check if the product handles protected health information (PHI)
+- GDPR: Check if the product processes personal data of EU residents
+- Use "compliant" if no issues found, "non-compliant" if clear violations, "requires-review" if unclear
+- Provide specific, actionable issues and recommendations
+- Always return valid JSON with exactly this structure
 `;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
     
+    console.log('Raw Gemini response:', text);
+    
     // Try to parse the JSON response
     try {
-      return JSON.parse(text);
+      // Clean the response text - remove any markdown formatting
+      let cleanText = text.trim();
+      
+      // Remove markdown code blocks if present
+      if (cleanText.startsWith('```json')) {
+        cleanText = cleanText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+      } else if (cleanText.startsWith('```')) {
+        cleanText = cleanText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+      }
+      
+      const parsedResponse = JSON.parse(cleanText);
+      
+      // Validate the structure
+      if (parsedResponse.coppa && parsedResponse.hipaa && parsedResponse.gdpr) {
+        return parsedResponse;
+      } else {
+        throw new Error('Invalid response structure');
+      }
     } catch (parseError) {
-      // If JSON parsing fails, return a structured response
+      console.error('JSON parsing error:', parseError);
+      console.error('Response text:', text);
+      
+      // Return a structured error response
       return {
         coppa: {
           compliance: "requires-review",
-          issues: ["Unable to parse AI response"],
-          recommendations: ["Please review the document manually"]
+          issues: ["Unable to parse AI response - please review manually"],
+          recommendations: ["Please review the document manually for COPPA compliance"]
         },
         hipaa: {
           compliance: "requires-review",
-          issues: ["Unable to parse AI response"],
-          recommendations: ["Please review the document manually"]
+          issues: ["Unable to parse AI response - please review manually"],
+          recommendations: ["Please review the document manually for HIPAA compliance"]
         },
         gdpr: {
           compliance: "requires-review",
-          issues: ["Unable to parse AI response"],
-          recommendations: ["Please review the document manually"]
+          issues: ["Unable to parse AI response - please review manually"],
+          recommendations: ["Please review the document manually for GDPR compliance"]
         },
         rawResponse: text
       };
     }
   } catch (error) {
     console.error('Error analyzing with Gemini:', error);
+    
+    // Check if it's an API key or model issue
+    if (error.message && error.message.includes('404')) {
+      return {
+        coppa: {
+          compliance: "error",
+          issues: ["API model not found - please check Gemini API configuration"],
+          recommendations: ["Verify the Gemini API key and model name"]
+        },
+        hipaa: {
+          compliance: "error",
+          issues: ["API model not found - please check Gemini API configuration"],
+          recommendations: ["Verify the Gemini API key and model name"]
+        },
+        gdpr: {
+          compliance: "error",
+          issues: ["API model not found - please check Gemini API configuration"],
+          recommendations: ["Verify the Gemini API key and model name"]
+        }
+      };
+    }
+    
     return {
       coppa: {
         compliance: "error",
