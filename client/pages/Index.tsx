@@ -8,7 +8,10 @@ import {
   Github,
   Scale,
   Figma,
+  Download,
 } from "lucide-react";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -344,6 +347,292 @@ export default function Index() {
         return 'Error';
       default:
         return 'Unknown';
+    }
+  };
+
+  const generateLegalBriefPDF = async () => {
+    if (!complianceAnalysis) {
+      alert('Please generate a legal review first before downloading the brief.');
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (2 * margin);
+      let yPosition = margin;
+
+      // Title
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Product Legal Brief', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 15;
+
+      // Date
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 20;
+
+      // Regulations Section
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('1. Regulations', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+
+      // COPPA
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('COPPA (Children\'s Online Privacy Protection Act):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.coppa.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.coppa.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.coppa.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.coppa.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.coppa.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // HIPAA
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('HIPAA (Health Insurance Portability and Accountability Act):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.hipaa.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.hipaa.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.hipaa.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.hipaa.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.hipaa.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // GDPR
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('GDPR (General Data Protection Regulation):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.gdpr.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.gdpr.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.gdpr.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.gdpr.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.gdpr.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 15;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // Policies Section
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('2. Policies', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Based on the compliance analysis, the following policies should be implemented:', margin, yPosition);
+      yPosition += 8;
+
+      // Generate policy recommendations based on compliance status
+      const allIssues = [
+        ...complianceAnalysis.coppa.issues,
+        ...complianceAnalysis.hipaa.issues,
+        ...complianceAnalysis.gdpr.issues
+      ];
+
+      if (allIssues.length > 0) {
+        pdf.text('Required Policy Updates:', margin, yPosition);
+        yPosition += 6;
+        allIssues.forEach(issue => {
+          pdf.text(`• Address: ${issue}`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // Data Deletion Requirements
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('3. Data Deletion Requirements', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('The following data deletion requirements must be implemented:', margin, yPosition);
+      yPosition += 8;
+
+      if (complianceAnalysis.gdpr.compliance !== 'compliant') {
+        pdf.text('• Right to be forgotten: Users must be able to request complete data deletion', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Data retention policies must be clearly defined and communicated', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.coppa.compliance !== 'compliant') {
+        pdf.text('• Children\'s data must be deleted upon request from parents/guardians', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.hipaa.compliance !== 'compliant') {
+        pdf.text('• PHI data must be securely deleted according to HIPAA guidelines', margin + 5, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 10;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // AI Risk Assessment
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('4. AI Risk Assessment', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('AI-powered compliance analysis indicates the following risk factors:', margin, yPosition);
+      yPosition += 8;
+
+      const riskLevels = {
+        coppa: complianceAnalysis.coppa.compliance === 'compliant' ? 'Low' : 'High',
+        hipaa: complianceAnalysis.hipaa.compliance === 'compliant' ? 'Low' : 'High',
+        gdpr: complianceAnalysis.gdpr.compliance === 'compliant' ? 'Low' : 'High'
+      };
+
+      pdf.text(`• COPPA Risk Level: ${riskLevels.coppa}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• HIPAA Risk Level: ${riskLevels.hipaa}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• GDPR Risk Level: ${riskLevels.gdpr}`, margin + 5, yPosition);
+      yPosition += 10;
+
+      // Login & Profile Mockup
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('5. Login & Profile Mockup', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Recommended user interface elements for compliance:', margin, yPosition);
+      yPosition += 8;
+
+      if (complianceAnalysis.coppa.compliance !== 'compliant') {
+        pdf.text('• Age verification gate for users under 13', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Parental consent forms and verification', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.gdpr.compliance !== 'compliant') {
+        pdf.text('• Clear consent checkboxes for data processing', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Privacy settings dashboard for user control', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Data export and deletion request forms', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.hipaa.compliance !== 'compliant') {
+        pdf.text('• Secure authentication for health data access', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Audit trail for all health data interactions', margin + 5, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 10;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // Data Flow Screenshot
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('6. Data Flow Screenshot', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Data flow considerations based on compliance requirements:', margin, yPosition);
+      yPosition += 8;
+
+      pdf.text('• Data collection points must be clearly identified', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data storage locations and encryption methods', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data sharing and third-party access controls', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data retention and deletion workflows', margin + 5, yPosition);
+      yPosition += 5;
+
+      // Footer
+      yPosition = pageHeight - 20;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'italic');
+      pdf.text('This legal brief was generated automatically based on AI-powered compliance analysis.', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+      pdf.text('Please consult with legal professionals for final compliance decisions.', pageWidth / 2, yPosition, { align: 'center' });
+
+      // Save the PDF
+      pdf.save('product-legal-brief.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
     }
   };
 
@@ -1020,6 +1309,23 @@ export default function Index() {
                     </div>
                   </div>
                 </>
+              )}
+
+              {/* Download Legal Brief Button */}
+              {complianceAnalysis && (
+                <div className="pt-4 border-t">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={generateLegalBriefPDF}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Legal Brief
+                  </Button>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    Generate a comprehensive PDF legal brief with compliance analysis
+                  </p>
+                </div>
               )}
             </CardContent>
           </Card>
