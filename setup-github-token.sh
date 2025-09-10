@@ -1,0 +1,33 @@
+#!/bin/bash
+
+echo "🔧 GitHub Integration Setup"
+echo "=========================="
+echo ""
+echo "To enable GitHub repository analysis, you need to:"
+echo ""
+echo "1. Create a GitHub Personal Access Token:"
+echo "   - Go to: https://github.com/settings/tokens"
+echo "   - Click 'Generate new token (classic)'"
+echo "   - Select scopes: 'repo' and 'public_repo'"
+echo "   - Copy the token (starts with 'ghp_')"
+echo ""
+echo "2. Set the environment variable:"
+echo "   export GITHUB_TOKEN=your_token_here"
+echo ""
+echo "3. Or add to your .env.local file:"
+echo "   GITHUB_TOKEN=your_token_here"
+echo ""
+echo "4. Restart the development server:"
+echo "   npm run dev"
+echo ""
+echo "After setup, the system will be able to:"
+echo "✅ Search your GitHub repository for compliance-related code"
+echo "✅ Analyze actual implementation for COPPA, HIPAA, GDPR issues"
+echo "✅ Include code findings in the legal brief"
+echo ""
+echo "Current status:"
+if [ -z "$GITHUB_TOKEN" ]; then
+    echo "❌ GITHUB_TOKEN not set"
+else
+    echo "✅ GITHUB_TOKEN is configured"
+fi
