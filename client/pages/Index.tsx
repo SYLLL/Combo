@@ -8,12 +8,14 @@ import {
   Github,
   Scale,
   Figma,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 interface AnalysisResult {
   status: "pending" | "good" | "questions" | "issues";
@@ -39,6 +41,7 @@ interface LegalReview {
 }
 
 export default function Index() {
+  const navigate = useNavigate();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [productDescription, setProductDescription] = useState(
     "Adding a daily mode toggle to user profile",
@@ -561,6 +564,15 @@ export default function Index() {
                   disabled={!uploadedFile || isUploading}
                 >
                   {isUploading ? 'Uploading...' : 'Generate legal review'}
+                </Button>
+                
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={() => navigate('/compliance-log')}
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  View Compliance Decision Log
                 </Button>
                 
                 {uploadStatus.type && (

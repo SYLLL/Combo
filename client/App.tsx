@@ -2191,6 +2191,78 @@ function Index() {
   );
 }
 
+// Compliance Log Page
+function ComplianceLog() {
+  const navigate = useNavigate();
+  
+  return (
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
+          Compliance Log
+        </h1>
+        <button
+          onClick={() => navigate('/compliance-council')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          Back to Council
+        </button>
+      </div>
+      
+      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>
+          Compliance log functionality will be implemented here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Compliance Risk Detail Page
+function ComplianceRiskDetail() {
+  const navigate = useNavigate();
+  
+  return (
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
+          Compliance Risk Detail
+        </h1>
+        <button
+          onClick={() => navigate('/compliance-council')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          Back to Council
+        </button>
+      </div>
+      
+      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>
+          Compliance risk detail functionality will be implemented here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 const App = () => (
   <BrowserRouter>
     <Routes>
@@ -2198,6 +2270,8 @@ const App = () => (
       <Route path="*" element={<Index />} />
       <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
       <Route path="/compliance-review" element={<ComplianceReviewPage />} />
+      <Route path="/compliance-log" element={<ComplianceLog />} />
+      <Route path="/compliance-risk/:riskId" element={<ComplianceRiskDetail />} />
     </Routes>
   </BrowserRouter>
 );
