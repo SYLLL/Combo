@@ -405,6 +405,36 @@ export default function Index() {
           </CardContent>
         </Card>
 
+        {/* Compliance Decision Log Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5 text-primary" />
+              Compliance Decision Log
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              View all flagged compliance risks, team discussions, and final decisions
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Track compliance discussions and decisions</p>
+                <p className="text-xs text-muted-foreground">
+                  Access the complete history of flagged risks, team conversations, and final decisions
+                </p>
+              </div>
+              <Button
+                onClick={() => navigate('/compliance-log')}
+                className="flex items-center gap-2"
+              >
+                <MessageCircle className="h-4 w-4" />
+                View Decision Log
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Launch Compliance Section */}
           <Card className="md:col-span-2 lg:col-span-1">
