@@ -575,15 +575,6 @@ export default function Index() {
                   View Compliance Decision Log
                 </Button>
                 
-                <Button 
-                  variant="outline" 
-                  className="w-full mt-2"
-                  onClick={() => navigate('/compliance-log')}
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  View Compliance Decision Log
-                </Button>
-                
                 {uploadStatus.type && (
                   <div className={`mt-3 p-3 rounded-md text-sm ${
                     uploadStatus.type === 'success' 
