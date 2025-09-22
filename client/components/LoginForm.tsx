@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { signInUser, signUpUser, createUserProfile } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { Shield, ArrowLeft } from 'lucide-react';
+import { Shield, ArrowLeft, AlertTriangle, ArrowRight, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface LoginFormProps {
@@ -250,6 +250,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           </div>
         </div>
       </div>
-    );
-  }
+    </div>
+  );
 };
