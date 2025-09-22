@@ -68,7 +68,7 @@ export const UserProfile = () => {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-md mx-auto bg-card border-border shadow-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>User Profile</CardTitle>
@@ -76,7 +76,7 @@ export const UserProfile = () => {
             variant="outline"
             size="sm"
             onClick={handleSignOut}
-            className="text-red-600 hover:text-red-700"
+            className="text-destructive hover:text-destructive/90 border-border"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
@@ -86,7 +86,7 @@ export const UserProfile = () => {
       <CardContent className="space-y-4">
         <div>
           <label className="text-sm font-medium text-muted-foreground">Email</label>
-          <p className="text-sm">{currentUser.email}</p>
+          <p className="text-sm text-foreground">{currentUser.email}</p>
         </div>
 
         {isEditing ? (
@@ -100,6 +100,7 @@ export const UserProfile = () => {
                 value={editForm.displayName}
                 onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
                 placeholder="Enter display name"
+                className="bg-input border-border text-foreground"
               />
             </div>
             
@@ -112,6 +113,7 @@ export const UserProfile = () => {
                 value={editForm.role}
                 onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                 placeholder="Enter your role"
+                className="bg-input border-border text-foreground"
               />
             </div>
             
@@ -124,6 +126,7 @@ export const UserProfile = () => {
                 value={editForm.company}
                 onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
                 placeholder="Enter company name"
+                className="bg-input border-border text-foreground"
               />
             </div>
 
@@ -131,7 +134,7 @@ export const UserProfile = () => {
               <Button
                 onClick={handleSave}
                 disabled={updating}
-                className="flex-1"
+                className="flex-1 bg-primary hover:bg-primary/90"
               >
                 <Save className="h-4 w-4 mr-2" />
                 {updating ? 'Saving...' : 'Save'}
@@ -139,7 +142,7 @@ export const UserProfile = () => {
               <Button
                 variant="outline"
                 onClick={handleCancel}
-                className="flex-1"
+                className="flex-1 border-border"
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
@@ -150,22 +153,22 @@ export const UserProfile = () => {
           <>
             <div>
               <label className="text-sm font-medium text-muted-foreground">Display Name</label>
-              <p className="text-sm">{userProfile.displayName || 'Not set'}</p>
+              <p className="text-sm text-foreground">{userProfile.displayName || 'Not set'}</p>
             </div>
             
             <div>
               <label className="text-sm font-medium text-muted-foreground">Role</label>
-              <p className="text-sm">{userProfile.role || 'Not set'}</p>
+              <p className="text-sm text-foreground">{userProfile.role || 'Not set'}</p>
             </div>
             
             <div>
               <label className="text-sm font-medium text-muted-foreground">Company</label>
-              <p className="text-sm">{userProfile.company || 'Not set'}</p>
+              <p className="text-sm text-foreground">{userProfile.company || 'Not set'}</p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-muted-foreground">Member Since</label>
-              <p className="text-sm">
+              <p className="text-sm text-foreground">
                 {userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'Unknown'}
               </p>
             </div>
@@ -173,7 +176,7 @@ export const UserProfile = () => {
             <Button
               onClick={() => setIsEditing(true)}
               variant="outline"
-              className="w-full"
+              className="w-full border-border"
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit Profile

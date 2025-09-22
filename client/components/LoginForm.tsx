@@ -54,7 +54,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
   if (currentUser) {
     return (
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full max-w-md mx-auto bg-card border-border">
         <CardContent className="pt-6">
           <p className="text-center text-muted-foreground">
             You are already signed in as {currentUser.email}
@@ -65,15 +65,24 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   }
 
   return (
-    <div className="w-full">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold text-foreground">Combo AI</h1>
+          <p className="text-muted-foreground">Product Requirements Review & Compliance Analysis</p>
+        </div>
+
+        <Card className="bg-card border-border shadow-lg">
+          <CardContent className="p-6">
       <div className="flex items-center justify-center mb-6">
-        <div className="flex bg-muted rounded-lg p-1">
+        <div className="flex bg-muted rounded-lg p-1 border border-border">
           <button
             type="button"
             onClick={() => setIsSignUp(false)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               !isSignUp 
-                ? 'bg-background text-foreground shadow-sm' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -84,7 +93,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onClick={() => setIsSignUp(true)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               isSignUp 
-                ? 'bg-background text-foreground shadow-sm' 
+                ? 'bg-primary text-primary-foreground shadow-sm' 
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -106,7 +115,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Enter your full name"
               required={isSignUp}
-              className="h-11"
+              className="h-11 bg-input border-border text-foreground placeholder:text-muted-foreground"
             />
           </div>
         )}
@@ -122,7 +131,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email address"
             required
-            className="h-11"
+            className="h-11 bg-input border-border text-foreground placeholder:text-muted-foreground"
           />
         </div>
         
@@ -137,12 +146,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             required
-            className="h-11"
+            className="h-11 bg-input border-border text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+          <div className="p-4 bg-destructive/10 border border-destructive/20 text-destructive rounded-lg text-sm">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -154,7 +163,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
 
         <Button
           type="submit"
-          className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
+          className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
           disabled={loading}
         >
           {loading ? (
@@ -183,6 +192,9 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           </p>
         </div>
       </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

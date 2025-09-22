@@ -364,7 +364,7 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b bg-card px-4 sm:px-6 py-4">
+      <header className="border-b border-border bg-card px-4 sm:px-6 py-4">
         <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
           Combo AI
         </h1>
@@ -376,7 +376,7 @@ export default function Index() {
       {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Compliance Decision Log Card */}
-        <Card className="mb-6">
+        <Card className="mb-6 bg-card border-border">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-primary" />
@@ -396,7 +396,7 @@ export default function Index() {
               </div>
               <Button
                 onClick={() => navigate('/compliance-log')}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 bg-primary hover:bg-primary/90"
               >
                 <MessageCircle className="h-4 w-4" />
                 View Decision Log
@@ -467,7 +467,7 @@ export default function Index() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
           {/* Launch Compliance Section */}
-          <Card className="md:col-span-2 lg:col-span-1">
+          <Card className="md:col-span-2 lg:col-span-1 bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-primary" />
@@ -485,7 +485,7 @@ export default function Index() {
                 <Textarea
                   value={productDescription}
                   onChange={(e) => setProductDescription(e.target.value)}
-                  className="min-h-[60px] text-sm"
+                  className="min-h-[60px] text-sm bg-input border-border text-foreground"
                 />
               </div>
 
@@ -493,11 +493,11 @@ export default function Index() {
                 <Button
                   onClick={handleGenerateCompliance}
                   disabled={isGenerating || !productDescription.trim()}
-                  className="w-full max-w-xs"
+                  className="w-full max-w-xs bg-primary hover:bg-primary/90"
                 >
                   {isGenerating ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2"></div>
                       Generating...
                     </>
                   ) : (
