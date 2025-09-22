@@ -11,9 +11,9 @@ import {
   AlertTriangle,
   Users,
   Target,
+  Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 
@@ -35,7 +35,7 @@ export default function Index() {
   return (
     <div className="min-h-screen" style={{ background: '#0f0f23' }}>
       {/* Navigation */}
-      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-sm sticky top-0 z-50">
+      <nav className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
@@ -51,7 +51,7 @@ export default function Index() {
               </a>
               <Button 
                 onClick={handleBookDemo}
-                className="purple-cta px-6 py-2 rounded-lg"
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-medium"
               >
                 <BookOpen className="h-4 w-4 mr-2" />
                 Book Demo
@@ -77,22 +77,16 @@ export default function Index() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-2xl mx-auto mb-12">
-            <div className="relative flex-1 w-full">
-              <Input
-                type="email"
-                placeholder="Enter your work email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-14 dark-input text-white placeholder:text-gray-400 text-lg px-6"
-                style={{ 
-                  background: 'rgba(30, 35, 70, 0.8)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)'
-                }}
-              />
-            </div>
+            <Input
+              type="email"
+              placeholder="Enter your work email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-14 dark-input text-white placeholder:text-gray-400 text-lg px-6 flex-1"
+            />
             <Button 
               onClick={handleJoinWaitlist}
-              className="h-14 px-8 purple-cta text-lg font-semibold"
+              className="h-14 px-8 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-lg"
             >
               <MessageCircle className="h-5 w-5 mr-2" />
               Join Waitlist
@@ -100,7 +94,7 @@ export default function Index() {
             <Button 
               variant="outline"
               onClick={handleBookDemo}
-              className="h-14 px-8 text-lg font-semibold border-white/20 text-white hover:bg-white/10"
+              className="h-14 px-8 text-lg font-semibold border-gray-600 text-white hover:bg-white/10 rounded-lg"
             >
               <BookOpen className="h-5 w-5 mr-2" />
               Book 15min Demo
@@ -121,7 +115,7 @@ export default function Index() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-24" style={{ background: '#0f0f23' }}>
+      <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-8">
@@ -149,7 +143,7 @@ export default function Index() {
                 <div className="dark-feature-card p-6 rounded-2xl">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 rounded-xl bg-orange-600 flex items-center justify-center">
-                      <Users className="h-6 w-6 text-white" />
+                      <Clock className="h-6 w-6 text-white" />
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-white mb-3">
@@ -182,11 +176,8 @@ export default function Index() {
 
             <div className="relative">
               <div 
-                className="p-8 rounded-2xl border"
-                style={{ 
-                  background: 'rgba(60, 30, 30, 0.6)',
-                  borderColor: 'rgba(239, 68, 68, 0.3)'
-                }}
+                className="p-8 rounded-2xl border border-red-500/30"
+                style={{ background: 'rgba(60, 30, 30, 0.6)' }}
               >
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-semibold text-white">Product Council Review</h3>
@@ -227,7 +218,7 @@ export default function Index() {
       </section>
 
       {/* Solution Section */}
-      <section className="py-24" style={{ background: '#0f0f23' }}>
+      <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
@@ -325,7 +316,7 @@ export default function Index() {
       </section>
 
       {/* Demo Section */}
-      <section className="py-24" style={{ background: '#0f0f23' }}>
+      <section className="py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
@@ -336,13 +327,7 @@ export default function Index() {
             </p>
           </div>
 
-          <div 
-            className="max-w-4xl mx-auto p-8 rounded-2xl border"
-            style={{ 
-              background: 'rgba(30, 35, 70, 0.6)',
-              borderColor: 'rgba(168, 85, 247, 0.2)'
-            }}
-          >
+          <div className="max-w-4xl mx-auto dark-feature-card p-8 rounded-2xl">
             <div className="bg-black/40 rounded-xl p-6 font-mono text-sm border border-white/10">
               <div className="space-y-3">
                 <div className="text-green-400 flex items-center gap-2">
@@ -370,7 +355,7 @@ export default function Index() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24" style={{ background: '#0f0f23' }}>
+      <section className="py-24">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
             Ready to Stop Flying Blind?
@@ -380,22 +365,16 @@ export default function Index() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 max-w-2xl mx-auto mb-8">
-            <div className="relative flex-1 w-full">
-              <Input
-                type="email"
-                placeholder="Enter your work email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-14 dark-input text-white placeholder:text-gray-400 text-lg px-6"
-                style={{ 
-                  background: 'rgba(30, 35, 70, 0.8)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)'
-                }}
-              />
-            </div>
+            <Input
+              type="email"
+              placeholder="Enter your work email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="h-14 dark-input text-white placeholder:text-gray-400 text-lg px-6 flex-1"
+            />
             <Button 
               onClick={handleJoinWaitlist}
-              className="h-14 px-8 purple-cta text-lg font-semibold"
+              className="h-14 px-8 bg-purple-600 hover:bg-purple-700 text-white text-lg font-semibold rounded-lg"
             >
               Get Early Access
             </Button>
