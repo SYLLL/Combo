@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { signOutUser, updateUserProfile } from '@/lib/firebase';
 import { useAuth } from '@/hooks/useAuth';
-import { LogOut, Edit, Save, X } from 'lucide-react';
+import { LogOut, Edit, Save, X, User, Mail, Building, Calendar } from 'lucide-react';
 
 export const UserProfile = () => {
   const { currentUser, userProfile, loading } = useAuth();
@@ -33,7 +33,6 @@ export const UserProfile = () => {
       const result = await updateUserProfile(currentUser.uid, editForm);
       if (result.success) {
         setIsEditing(false);
-        // The useAuth hook will automatically update the userProfile
       } else {
         console.error('Failed to update profile:', result.error);
       }
@@ -55,9 +54,12 @@ export const UserProfile = () => {
 
   if (loading) {
     return (
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full max-w-2xl mx-auto bg-card border-border">
         <CardContent className="pt-6">
-          <p className="text-center text-muted-foreground">Loading...</p>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading profile...</p>
+          </div>
         </CardContent>
       </Card>
     );
@@ -68,121 +70,163 @@ export const UserProfile = () => {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto bg-card border-border shadow-lg">
+    <Card className="w-full max-w-2xl mx-auto bg-card border-border shadow-xl">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>User Profile</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5 text-primary" />
+            User Profile
+          </CardTitle>
           <Button
             variant="outline"
             size="sm"
             onClick={handleSignOut}
-            className="text-destructive hover:text-destructive/90 border-border"
+            className="text-destructive hover:text-destructive/90 border-border hover:bg-destructive/10"
           >
             <LogOut className="h-4 w-4 mr-2" />
             Sign Out
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label className="text-sm font-medium text-muted-foreground">Email</label>
-          <p className="text-sm text-foreground">{currentUser.email}</p>
+      <CardContent className="space-y-6">
+        {/* Profile Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+              <Mail className="h-5 w-5 text-primary" />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</label>
+                <p className="text-sm font-medium text-foreground">{currentUser.email}</p>
+              </div>
+            </div>
+
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="displayName" className="text-sm font-medium text-foreground mb-2 block">
+                    Display Name
+                  </label>
+                  <Input
+                    id="displayName"
+                    value={editForm.displayName}
+                    onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                    placeholder="Enter display name"
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="role" className="text-sm font-medium text-foreground mb-2 block">
+                    Role
+                  </label>
+                  <Input
+                    id="role"
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    placeholder="Enter your role"
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+                
+                <div>
+                  <label htmlFor="company" className="text-sm font-medium text-foreground mb-2 block">
+                    Company
+                  </label>
+                  <Input
+                    id="company"
+                    value={editForm.company}
+                    onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                    placeholder="Enter company name"
+                    className="bg-input border-border text-foreground"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                  <User className="h-5 w-5 text-primary" />
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Display Name</label>
+                    <p className="text-sm font-medium text-foreground">{userProfile.displayName || 'Not set'}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                  <Building className="h-5 w-5 text-primary" />
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</label>
+                    <p className="text-sm font-medium text-foreground">{userProfile.role || 'Not set'}</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+                  <Building className="h-5 w-5 text-primary" />
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Company</label>
+                    <p className="text-sm font-medium text-foreground">{userProfile.company || 'Not set'}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg">
+              <Calendar className="h-5 w-5 text-primary" />
+              <div>
+                <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Member Since</label>
+                <p className="text-sm font-medium text-foreground">
+                  {userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'Unknown'}
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
+              <h4 className="font-semibold text-foreground mb-2">Account Status</h4>
+              <div className="flex items-center gap-2">
+                <Badge className="bg-success/20 text-success border-success/30">
+                  Active
+                </Badge>
+                <Badge variant="outline" className="border-primary/30 text-primary">
+                  Pro Plan
+                </Badge>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {isEditing ? (
-          <>
-            <div>
-              <label htmlFor="displayName" className="text-sm font-medium text-foreground">
-                Display Name
-              </label>
-              <Input
-                id="displayName"
-                value={editForm.displayName}
-                onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
-                placeholder="Enter display name"
-                className="bg-input border-border text-foreground"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="role" className="text-sm font-medium text-foreground">
-                Role
-              </label>
-              <Input
-                id="role"
-                value={editForm.role}
-                onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                placeholder="Enter your role"
-                className="bg-input border-border text-foreground"
-              />
-            </div>
-            
-            <div>
-              <label htmlFor="company" className="text-sm font-medium text-foreground">
-                Company
-              </label>
-              <Input
-                id="company"
-                value={editForm.company}
-                onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
-                placeholder="Enter company name"
-                className="bg-input border-border text-foreground"
-              />
-            </div>
-
-            <div className="flex space-x-2">
+        {/* Action Buttons */}
+        <div className="flex justify-center pt-6 border-t border-border">
+          {isEditing ? (
+            <div className="flex space-x-3">
               <Button
                 onClick={handleSave}
                 disabled={updating}
-                className="flex-1 bg-primary hover:bg-primary/90"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground"
               >
                 <Save className="h-4 w-4 mr-2" />
-                {updating ? 'Saving...' : 'Save'}
+                {updating ? 'Saving...' : 'Save Changes'}
               </Button>
               <Button
                 variant="outline"
                 onClick={handleCancel}
-                className="flex-1 border-border"
+                className="border-border hover:bg-accent"
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
               </Button>
             </div>
-          </>
-        ) : (
-          <>
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Display Name</label>
-              <p className="text-sm text-foreground">{userProfile.displayName || 'Not set'}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Role</label>
-              <p className="text-sm text-foreground">{userProfile.role || 'Not set'}</p>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Company</label>
-              <p className="text-sm text-foreground">{userProfile.company || 'Not set'}</p>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Member Since</label>
-              <p className="text-sm text-foreground">
-                {userProfile.createdAt ? new Date(userProfile.createdAt).toLocaleDateString() : 'Unknown'}
-              </p>
-            </div>
-
+          ) : (
             <Button
               onClick={() => setIsEditing(true)}
               variant="outline"
-              className="w-full border-border"
+              className="border-border hover:bg-accent"
             >
               <Edit className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
-          </>
-        )}
+          )}
+        </div>
       </CardContent>
     </Card>
   );
