@@ -4,47 +4,29 @@
 
 @layer base {
   :root {
-    /* Dark navy background like the reference */
-    --background: 225 39% 10%;
+    --background: 220 27% 8%;
     --foreground: 0 0% 98%;
-
-    /* Darker cards with subtle borders */
-    --card: 225 39% 12%;
+    --card: 220 20% 12%;
     --card-foreground: 0 0% 95%;
-
-    --popover: 225 39% 12%;
+    --popover: 220 20% 12%;
     --popover-foreground: 0 0% 95%;
-
-    /* Bright purple primary matching reference */
     --primary: 270 91% 65%;
     --primary-foreground: 0 0% 100%;
-
-    /* Dark secondary colors */
-    --secondary: 225 39% 15%;
+    --secondary: 220 20% 15%;
     --secondary-foreground: 0 0% 85%;
-
-    /* Muted backgrounds */
-    --muted: 225 39% 14%;
+    --muted: 220 20% 14%;
     --muted-foreground: 0 0% 65%;
-
-    /* Purple accent */
     --accent: 270 91% 25%;
     --accent-foreground: 270 91% 85%;
-
     --success: 142 69% 58%;
     --success-foreground: 0 0% 100%;
-
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
-
-    /* Subtle borders */
-    --border: 225 39% 18%;
-    --input: 225 39% 16%;
+    --border: 220 20% 18%;
+    --input: 220 20% 16%;
     --ring: 270 91% 65%;
-
     --radius: 0.75rem;
   }
 }
@@ -53,16 +35,10 @@
   * {
     @apply border-border;
   }
-
   body {
     @apply bg-background text-foreground;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    /* Force the dark navy background */
-    background-color: #1a1b3a !important;
-  }
-
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold text-white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: #1a1b3a;
   }
 }
 
@@ -72,51 +48,5 @@
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-  }
-
-  .hero-gradient {
-    background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
-  }
-
-  .card-hover {
-    @apply transition-all duration-300 hover:shadow-xl hover:shadow-purple-500/20 hover:-translate-y-1;
-  }
-
-  .feature-icon {
-    @apply w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg;
-  }
-
-  /* Custom dark card styling */
-  .dark-feature-card {
-    background: rgba(30, 35, 70, 0.6);
-    border: 1px solid rgba(168, 85, 247, 0.2);
-    backdrop-filter: blur(10px);
-  }
-
-  /* Purple button styling */
-  .purple-cta {
-    background: linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%);
-    border: none;
-    color: white;
-    font-weight: 600;
-    transition: all 0.3s ease;
-  }
-
-  .purple-cta:hover {
-    background: linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(168, 85, 247, 0.3);
-  }
-
-  /* Dark input styling */
-  .dark-input {
-    background: rgba(30, 35, 70, 0.8);
-    border: 1px solid rgba(168, 85, 247, 0.3);
-    color: white;
-  }
-
-  .dark-input:focus {
-    border-color: #a855f7;
-    box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
   }
 }
