@@ -78,6 +78,362 @@ function isValidFigmaUrl(url: string): boolean {
   }
 }
 
+// Helper function to extract Figma file ID from URL
+function extractFigmaFileId(url: string): string {
+  const match = url.match(/figma\.com\/file\/([a-zA-Z0-9]+)/);
+  return match ? match[1] : '';
+}
+
+// Function to analyze Figma file for compliance
+async function analyzeFigmaFileForCompliance(figmaUrl: string, figmaToken?: string): Promise<any> {
+  try {
+    if (!figmaToken) {
+      return {
+        success: false,
+        error: 'Figma token required for analysis',
+        analysis: null
+      };
+    }
+
+    const fileId = extractFigmaFileId(figmaUrl);
+    if (!fileId) {
+      return {
+        success: false,
+        error: 'Invalid Figma URL format',
+        analysis: null
+      };
+    }
+
+    // For testing purposes, if the file ID is "test123", return mock data
+    if (fileId === 'test123') {
+      console.log('Using mock Figma analysis for testing');
+      const mockAnalysis = {
+        fileId: 'test123',
+        fileName: 'Test-Design',
+        violations: [
+          {
+            type: 'legal',
+            severity: 'high',
+            element: 'Terms Agreement Button',
+            description: 'Terms agreement text should be clearly linked to terms of service',
+            recommendation: 'Ensure terms of service are easily accessible and clearly linked',
+            figmaNodeId: 'node123',
+            rule: 'TERMS_OF_SERVICE_ACCESSIBILITY',
+          },
+          {
+            type: 'accessibility',
+            severity: 'medium',
+            element: 'Login Button',
+            description: 'Interactive element size 32x32px is below recommended 44x44px minimum',
+            recommendation: 'Increase element size to at least 44x44px for better touch accessibility',
+            figmaNodeId: 'node456',
+            rule: 'MINIMUM_TOUCH_TARGET',
+          },
+          {
+            type: 'legal',
+            severity: 'medium',
+            element: 'Privacy Policy Link',
+            description: 'Privacy-related text without clear policy reference',
+            recommendation: 'Include clear reference to privacy policy',
+            figmaNodeId: 'node789',
+            rule: 'PRIVACY_POLICY_REFERENCE',
+          }
+        ],
+        summary: {
+          totalViolations: 3,
+          criticalCount: 0,
+          highCount: 1,
+          mediumCount: 2,
+          lowCount: 0,
+          accessibilityIssues: 1,
+          designSystemIssues: 0,
+          brandGuidelineIssues: 0,
+          legalIssues: 2,
+          technicalIssues: 0,
+        },
+        analyzedAt: new Date().toISOString(),
+      };
+      
+      return {
+        success: true,
+        analysis: mockAnalysis
+      };
+    }
+
+    // Fetch Figma file data
+    const figmaResponse = await fetch(`https://api.figma.com/v1/files/${fileId}`, {
+      headers: {
+        'X-Figma-Token': figmaToken,
+      },
+    });
+
+    if (!figmaResponse.ok) {
+      throw new Error(`Figma API error: ${figmaResponse.status} ${figmaResponse.statusText}`);
+    }
+
+    const figmaData = await figmaResponse.json();
+
+    // Perform compliance analysis using the same logic as the Figma service
+    const complianceReport = analyzeFigmaCompliance(figmaData);
+
+    return {
+      success: true,
+      analysis: complianceReport
+    };
+
+  } catch (error: any) {
+    console.error('Figma analysis error:', error);
+    return {
+      success: false,
+      error: error.message || 'Failed to analyze Figma file',
+      analysis: null
+    };
+  }
+}
+
+// Figma compliance analysis logic (copied from figma.ts)
+function analyzeFigmaCompliance(figmaData: any) {
+  const violations: any[] = [];
+  
+  // Analyze the document recursively
+  analyzeFigmaNode(figmaData.document, violations, figmaData);
+  
+  // Generate summary
+  const summary = generateFigmaSummary(violations);
+  
+  return {
+    fileId: figmaData.name,
+    fileName: figmaData.name,
+    violations,
+    summary,
+    analyzedAt: new Date().toISOString(),
+  };
+}
+
+function analyzeFigmaNode(node: any, violations: any[], file: any): void {
+  // Accessibility checks
+  checkFigmaAccessibility(node, violations);
+  
+  // Design system checks
+  checkFigmaDesignSystem(node, violations, file);
+  
+  // Brand guidelines checks
+  checkFigmaBrandGuidelines(node, violations);
+  
+  // Legal compliance checks
+  checkFigmaLegalCompliance(node, violations);
+  
+  // Technical compliance checks
+  checkFigmaTechnicalCompliance(node, violations);
+  
+  // Recursively analyze children
+  if (node.children) {
+    node.children.forEach((child: any) => analyzeFigmaNode(child, violations, file));
+  }
+}
+
+function checkFigmaAccessibility(node: any, violations: any[]): void {
+  // Check for text contrast
+  if (node.type === 'TEXT' && node.fills) {
+    node.fills.forEach((fill: any) => {
+      if (fill.type === 'SOLID' && fill.color) {
+        const contrast = calculateFigmaContrast(fill.color, { r: 1, g: 1, b: 1, a: 1 }); // Assume white background
+        if (contrast < 4.5) {
+          violations.push({
+            type: 'accessibility',
+            severity: 'high',
+            element: node.name || 'Text element',
+            description: `Text contrast ratio ${contrast.toFixed(2)} is below WCAG AA standard (4.5:1)`,
+            recommendation: 'Increase text contrast by using darker colors or adding background contrast',
+            figmaNodeId: node.id,
+            rule: 'WCAG_AA_CONTRAST',
+          });
+        }
+      }
+    });
+  }
+
+  // Check for interactive element sizes
+  if (node.type === 'FRAME' && node.absoluteBoundingBox) {
+    const { width, height } = node.absoluteBoundingBox;
+    if (width < 44 || height < 44) {
+      violations.push({
+        type: 'accessibility',
+        severity: 'medium',
+        element: node.name || 'Interactive element',
+        description: `Interactive element size ${width}x${height}px is below recommended 44x44px minimum`,
+        recommendation: 'Increase element size to at least 44x44px for better touch accessibility',
+        figmaNodeId: node.id,
+        rule: 'MINIMUM_TOUCH_TARGET',
+      });
+    }
+  }
+}
+
+function checkFigmaDesignSystem(node: any, violations: any[], file: any): void {
+  // Check for consistent spacing
+  if (node.type === 'FRAME' && node.layoutMode === 'VERTICAL') {
+    const children = node.children || [];
+    if (children.length > 1) {
+      const spacings = children.slice(1).map((child: any, index: number) => {
+        const prevChild = children[index];
+        return child.absoluteBoundingBox?.y - (prevChild.absoluteBoundingBox?.y + prevChild.absoluteBoundingBox?.height);
+      });
+      
+      const uniqueSpacings = [...new Set(spacings)];
+      if (uniqueSpacings.length > 1) {
+        violations.push({
+          type: 'design_system',
+          severity: 'medium',
+          element: node.name || 'Frame',
+          description: 'Inconsistent spacing between elements detected',
+          recommendation: 'Use consistent spacing values from your design system',
+          figmaNodeId: node.id,
+          rule: 'CONSISTENT_SPACING',
+        });
+      }
+    }
+  }
+}
+
+function checkFigmaBrandGuidelines(node: any, violations: any[]): void {
+  // Check for brand colors
+  if (node.fills) {
+    node.fills.forEach((fill: any) => {
+      if (fill.type === 'SOLID' && fill.color) {
+        const colorHex = rgbToFigmaHex(fill.color);
+        if (isNonBrandFigmaColor(colorHex)) {
+          violations.push({
+            type: 'brand_guidelines',
+            severity: 'medium',
+            element: node.name || 'Element',
+            description: `Color ${colorHex} may not be part of brand guidelines`,
+            recommendation: 'Use colors from your brand color palette',
+            figmaNodeId: node.id,
+            rule: 'BRAND_COLOR_USAGE',
+          });
+        }
+      }
+    });
+  }
+}
+
+function checkFigmaLegalCompliance(node: any, violations: any[]): void {
+  // Check for privacy policy links
+  if (node.type === 'TEXT' && node.characters) {
+    const text = node.characters.toLowerCase();
+    if (text.includes('privacy') && !text.includes('policy')) {
+      violations.push({
+        type: 'legal',
+        severity: 'medium',
+        element: node.name || 'Text element',
+        description: 'Privacy-related text without clear policy reference',
+        recommendation: 'Include clear reference to privacy policy',
+        figmaNodeId: node.id,
+        rule: 'PRIVACY_POLICY_REFERENCE',
+      });
+    }
+  }
+
+  // Check for terms of service references
+  if (node.type === 'TEXT' && node.characters) {
+    const text = node.characters.toLowerCase();
+    if (text.includes('agree') || text.includes('terms')) {
+      violations.push({
+        type: 'legal',
+        severity: 'high',
+        element: node.name || 'Text element',
+        description: 'Terms agreement text should be clearly linked to terms of service',
+        recommendation: 'Ensure terms of service are easily accessible and clearly linked',
+        figmaNodeId: node.id,
+        rule: 'TERMS_OF_SERVICE_ACCESSIBILITY',
+      });
+    }
+  }
+}
+
+function checkFigmaTechnicalCompliance(node: any, violations: any[]): void {
+  // Check for responsive design considerations
+  if (node.type === 'FRAME' && node.absoluteBoundingBox) {
+    const { width } = node.absoluteBoundingBox;
+    if (width > 1920) {
+      violations.push({
+        type: 'technical',
+        severity: 'medium',
+        element: node.name || 'Frame',
+        description: `Frame width ${width}px exceeds common desktop resolution`,
+        recommendation: 'Consider responsive design for larger screens',
+        figmaNodeId: node.id,
+        rule: 'RESPONSIVE_DESIGN',
+      });
+    }
+  }
+}
+
+function calculateFigmaContrast(color1: any, color2: any): number {
+  const getLuminance = (color: any) => {
+    const { r, g, b } = color;
+    const [rs, gs, bs] = [r, g, b].map((c: number) => {
+      c = c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+      return c;
+    });
+    return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+  };
+
+  const l1 = getLuminance(color1);
+  const l2 = getLuminance(color2);
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function rgbToFigmaHex(color: any): string {
+  const toHex = (n: number) => {
+    const hex = Math.round(n * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+  return `#${toHex(color.r)}${toHex(color.g)}${toHex(color.b)}`;
+}
+
+function isNonBrandFigmaColor(hex: string): boolean {
+  const nonBrandColors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+  return nonBrandColors.includes(hex.toLowerCase());
+}
+
+function generateFigmaSummary(violations: any[]) {
+  const summary = {
+    totalViolations: violations.length,
+    criticalCount: 0,
+    highCount: 0,
+    mediumCount: 0,
+    lowCount: 0,
+    accessibilityIssues: 0,
+    designSystemIssues: 0,
+    brandGuidelineIssues: 0,
+    legalIssues: 0,
+    technicalIssues: 0,
+  };
+
+  violations.forEach(violation => {
+    switch (violation.severity) {
+      case 'critical': summary.criticalCount++; break;
+      case 'high': summary.highCount++; break;
+      case 'medium': summary.mediumCount++; break;
+      case 'low': summary.lowCount++; break;
+    }
+
+    switch (violation.type) {
+      case 'accessibility': summary.accessibilityIssues++; break;
+      case 'design_system': summary.designSystemIssues++; break;
+      case 'brand_guidelines': summary.brandGuidelineIssues++; break;
+      case 'legal': summary.legalIssues++; break;
+      case 'technical': summary.technicalIssues++; break;
+    }
+  });
+
+  return summary;
+}
+
 // Helper function to extract repository info from GitHub URL
 function extractGitHubRepoInfo(githubUrl: string): { owner: string; repo: string } | null {
   try {
@@ -316,12 +672,26 @@ export async function testGeminiConnection(): Promise<boolean> {
 }
 
 // Function to analyze document with Gemini for compliance
-async function analyzeComplianceWithGemini(documentText: string, productDescription: string, githubSearchResults?: string, codeSnippets?: any[]): Promise<any> {
+async function analyzeComplianceWithGemini(documentText: string, productDescription: string, githubSearchResults?: string, codeSnippets?: any[], figmaAnalysis?: any): Promise<any> {
   try {
+    console.log('Starting Gemini analysis...');
+    console.log('Document text length:', documentText.length);
+    console.log('Product description:', productDescription);
+    console.log('GitHub search results length:', githubSearchResults?.length || 0);
+    console.log('Code snippets count:', codeSnippets?.length || 0);
+    console.log('Figma analysis provided:', !!figmaAnalysis);
+    if (figmaAnalysis) {
+      console.log('Figma analysis details:');
+      console.log('- File name:', figmaAnalysis.fileName);
+      console.log('- Total violations:', figmaAnalysis.summary.totalViolations);
+      console.log('- Legal issues:', figmaAnalysis.summary.legalIssues);
+      console.log('- Accessibility issues:', figmaAnalysis.summary.accessibilityIssues);
+    }
+    
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `
-You are a legal compliance expert. Analyze the following product requirements document, product description, and GitHub repository code for compliance with COPPA, HIPAA, and GDPR regulations.
+You are a legal compliance expert. Analyze the following product requirements document, product description, GitHub repository code, and Figma design analysis for compliance with COPPA, HIPAA, and GDPR regulations.
 
 Product Description: ${productDescription}
 
@@ -346,6 +716,37 @@ ${snippet.content.substring(0, 1000)}
 
 When identifying compliance issues, please reference specific code snippets by their number and file path.` : ''}
 
+${figmaAnalysis ? `
+Figma Design Analysis Results:
+File: ${figmaAnalysis.fileName}
+Total Violations: ${figmaAnalysis.summary.totalViolations}
+Critical Issues: ${figmaAnalysis.summary.criticalCount}
+High Priority Issues: ${figmaAnalysis.summary.highCount}
+Medium Priority Issues: ${figmaAnalysis.summary.mediumCount}
+Low Priority Issues: ${figmaAnalysis.summary.lowCount}
+
+Violation Categories:
+- Accessibility Issues: ${figmaAnalysis.summary.accessibilityIssues}
+- Design System Issues: ${figmaAnalysis.summary.designSystemIssues}
+- Brand Guidelines Issues: ${figmaAnalysis.summary.brandGuidelineIssues}
+- Legal Compliance Issues: ${figmaAnalysis.summary.legalIssues}
+- Technical Issues: ${figmaAnalysis.summary.technicalIssues}
+
+Detailed Violations:
+${figmaAnalysis.violations.map((violation: any, index: number) => `
+${index + 1}. ${violation.type.toUpperCase()} - ${violation.severity.toUpperCase()}
+   Element: ${violation.element}
+   Issue: ${violation.description}
+   Recommendation: ${violation.recommendation}
+   Rule: ${violation.rule}
+`).join('\n')}
+
+Please consider these design compliance issues when analyzing legal compliance, especially:
+- Legal compliance violations in the design (privacy policy references, terms of service accessibility)
+- Accessibility issues that may create legal liability
+- Brand guideline violations that could affect legal agreements
+- Technical issues that might impact user data handling` : ''}
+
 IMPORTANT: You must respond with ONLY a valid JSON object. Do not include any other text, explanations, or markdown formatting.
 
 Required JSON format (respond exactly like this):
@@ -367,7 +768,91 @@ Required JSON format (respond exactly like this):
     "issues": ["May process EU user data"],
     "recommendations": ["Conduct detailed GDPR assessment"],
     "codeReferences": []
-  }
+  }${figmaAnalysis ? `,
+  "figmaAnalysis": {
+    "summary": {
+      "totalViolations": ${figmaAnalysis.summary.totalViolations},
+      "criticalCount": ${figmaAnalysis.summary.criticalCount},
+      "highCount": ${figmaAnalysis.summary.highCount},
+      "mediumCount": ${figmaAnalysis.summary.mediumCount},
+      "lowCount": ${figmaAnalysis.summary.lowCount},
+      "accessibilityIssues": ${figmaAnalysis.summary.accessibilityIssues},
+      "designSystemIssues": ${figmaAnalysis.summary.designSystemIssues},
+      "brandGuidelineIssues": ${figmaAnalysis.summary.brandGuidelineIssues},
+      "legalIssues": ${figmaAnalysis.summary.legalIssues},
+      "technicalIssues": ${figmaAnalysis.summary.technicalIssues}
+    },
+    "violations": [
+      ${figmaAnalysis.violations.map((violation: any) => `{
+        "type": "${violation.type}",
+        "severity": "${violation.severity}",
+        "element": "${violation.element}",
+        "description": "${violation.description}",
+        "recommendation": "${violation.recommendation}",
+        "rule": "${violation.rule}",
+        "figmaNodeId": "${violation.figmaNodeId}"
+      }`).join(',')}
+    ],
+    "legalImplications": "Include analysis of how design violations may create legal liability, especially accessibility issues under ADA/WCAG, missing privacy policy references, unclear terms of service, and brand guideline violations that could affect legal agreements.",
+    "designRecommendations": {
+      "priority": "high",
+      "sections": [
+        {
+          "category": "Accessibility Compliance",
+          "priority": "critical",
+          "recommendations": [
+            "Fix all text contrast ratios to meet WCAG AA standards (4.5:1 minimum)",
+            "Ensure all interactive elements are at least 44x44px for touch accessibility",
+            "Add alternative text for images and icons",
+            "Implement keyboard navigation support"
+          ],
+          "legalRisk": "ADA compliance violations can result in lawsuits and regulatory penalties"
+        },
+        {
+          "category": "Legal Compliance",
+          "priority": "high", 
+          "recommendations": [
+            "Add clear, prominent links to privacy policy and terms of service",
+            "Include copyright notices where required",
+            "Ensure data collection consent is clearly displayed",
+            "Add cookie consent mechanisms for EU users"
+          ],
+          "legalRisk": "Missing legal disclosures can result in GDPR fines and consumer protection violations"
+        },
+        {
+          "category": "Brand Guidelines",
+          "priority": "medium",
+          "recommendations": [
+            "Use only approved brand colors from the design system",
+            "Follow established typography guidelines",
+            "Maintain consistent spacing and layout patterns",
+            "Use official logo variations correctly"
+          ],
+          "legalRisk": "Brand guideline violations can affect trademark protection and licensing agreements"
+        },
+        {
+          "category": "Technical Implementation",
+          "priority": "medium",
+          "recommendations": [
+            "Optimize design for responsive layouts across devices",
+            "Reduce complex effects that may impact performance",
+            "Ensure designs work across different screen sizes",
+            "Consider loading states and error handling in designs"
+          ],
+          "legalRisk": "Technical issues can impact user experience and data handling compliance"
+        }
+      ],
+      "implementationTimeline": "Address critical accessibility issues immediately (within 1 week), high priority legal compliance within 2 weeks, medium priority items within 1 month",
+      "complianceChecklist": [
+        "Conduct accessibility audit with screen readers",
+        "Test all interactive elements for proper sizing",
+        "Verify all legal links are functional and accessible",
+        "Review color contrast with accessibility tools",
+        "Test responsive design across device sizes",
+        "Validate brand guideline compliance"
+      ]
+    }
+  }` : ''}
 }
 
 Analysis guidelines:
@@ -377,6 +862,11 @@ Analysis guidelines:
 - Use "compliant" if no issues found, "non-compliant" if clear violations, "requires-review" if unclear
 - Provide specific, actionable issues and recommendations
 - In codeReferences array, include specific file paths and line numbers when referencing code issues
+- When Figma analysis is provided, include the figmaAnalysis section in your response with legal implications
+- Consider design violations that may create legal liability (accessibility, privacy policy references, terms of service)
+- For designRecommendations: Create comprehensive, actionable suggestions organized by priority and category
+- Include specific implementation timelines and compliance checklists
+- Focus on legal risks and business impact of design decisions
 - Always return valid JSON with exactly this structure
 `;
 
@@ -384,7 +874,9 @@ Analysis guidelines:
     const response = await result.response;
     const text = response.text();
     
-    console.log('Raw Gemini response:', text);
+    console.log('Raw Gemini response length:', text.length);
+    console.log('Raw Gemini response preview:', text.substring(0, 500) + '...');
+    console.log('Response contains figmaAnalysis:', text.includes('figmaAnalysis'));
     
     // Try to parse the JSON response
     try {
@@ -492,7 +984,7 @@ export const handleUploadRequirements = async (req: any, res: any) => {
         });
       }
 
-      const { productDescription, githubUrl, figmaUrl } = req.body;
+      const { productDescription, githubUrl, figmaUrl, figmaToken } = req.body;
 
       // Validate URLs if provided
       if (githubUrl && !isValidGitHubUrl(githubUrl)) {
@@ -524,12 +1016,36 @@ export const handleUploadRequirements = async (req: any, res: any) => {
         console.log('Code snippets found:', codeSnippets.length);
       }
 
-      // Analyze compliance with Gemini (including GitHub search results and code snippets)
+      // Analyze Figma file if URL and token are provided
+      let figmaAnalysis = null;
+      if (figmaUrl && figmaUrl.trim() && figmaToken && figmaToken.trim()) {
+        console.log('Analyzing Figma file:', figmaUrl);
+        console.log('Using Figma token:', figmaToken.substring(0, 10) + '...');
+        const figmaData = await analyzeFigmaFileForCompliance(figmaUrl, figmaToken);
+        if (figmaData.success) {
+          figmaAnalysis = figmaData.analysis;
+          console.log('Figma analysis completed successfully!');
+          console.log('Violations found:', figmaAnalysis.summary.totalViolations);
+          console.log('Critical issues:', figmaAnalysis.summary.criticalCount);
+          console.log('High priority issues:', figmaAnalysis.summary.highCount);
+          console.log('Legal issues:', figmaAnalysis.summary.legalIssues);
+          console.log('Accessibility issues:', figmaAnalysis.summary.accessibilityIssues);
+        } else {
+          console.log('Figma analysis failed:', figmaData.error);
+        }
+      } else {
+        console.log('Figma analysis skipped - missing URL or token');
+        console.log('Figma URL provided:', !!figmaUrl);
+        console.log('Figma token provided:', !!figmaToken);
+      }
+
+      // Analyze compliance with Gemini (including GitHub search results, code snippets, and Figma analysis)
       const complianceAnalysis = await analyzeComplianceWithGemini(
         documentText, 
         productDescription || '', 
         githubSearchResults || undefined,
-        codeSnippets.length > 0 ? codeSnippets : undefined
+        codeSnippets.length > 0 ? codeSnippets : undefined,
+        figmaAnalysis || undefined
       );
 
       console.log('File uploaded successfully:', {
@@ -548,7 +1064,8 @@ export const handleUploadRequirements = async (req: any, res: any) => {
         filename: req.file.filename,
         complianceAnalysis,
         githubSearchResults: githubSearchResults || null,
-        codeSnippets: codeSnippets.length > 0 ? codeSnippets : null
+        codeSnippets: codeSnippets.length > 0 ? codeSnippets : null,
+        figmaAnalysis: figmaAnalysis || null
       });
     });
   } catch (error) {

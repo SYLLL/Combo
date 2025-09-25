@@ -20,6 +20,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [signUpSuccess, setSignUpSuccess] = useState(false);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  console.log('LoginForm rendered - currentUser:', currentUser);
   
   // Emergency keyboard shortcut for force sign out
   useEffect(() => {
@@ -183,7 +185,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
       } catch (error) {
         console.error("Error in force sign out:", error);
         // Last resort - hard reload
-        window.location.reload(true);
+        window.location.reload();
       }
     };
 

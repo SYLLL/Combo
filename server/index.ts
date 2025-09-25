@@ -5,6 +5,7 @@ import { handleDemo } from "./routes/demo";
 import { handleUploadRequirements } from "./routes/upload.js";
 import { handleUploadSettlements } from "./routes/settlements.js";
 import { testGeminiConnection } from "./routes/upload.js";
+import { analyzeFigmaFile } from "./routes/figma";
 
 export function createServer() {
   const app = express();
@@ -23,6 +24,7 @@ export function createServer() {
   app.get("/api/demo", handleDemo);
   app.post("/api/upload-requirements", handleUploadRequirements);
   app.post("/api/upload-settlements", handleUploadSettlements);
+  app.post("/api/figma/analyze", analyzeFigmaFile);
 
   // Test endpoint for Gemini API
   app.get('/api/test-gemini', async (req, res) => {

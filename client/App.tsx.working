@@ -1,0 +1,2288 @@
+import "./global.css";
+
+import { createRoot } from "react-dom/client";
+import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
+import jsPDF from 'jspdf';
+import { signInUser, signUpUser, createUserProfile } from "./lib/firebase";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { LoginForm } from "./components/LoginForm";
+
+// Product Compliance Council Page
+function ProductComplianceCouncil() {
+  const navigate = useNavigate();
+  const [showNewProjectForm, setShowNewProjectForm] = useState(false);
+  const [projects, setProjects] = useState([
+    {
+      id: 1,
+      name: 'Feature X Compliance',
+      status: 'In Progress',
+      description: 'Compliance review for new feature implementation',
+      createdAt: '2024-01-15',
+      priority: 'High'
+    },
+    {
+      id: 2,
+      name: 'Security Review',
+      status: 'Pending',
+      description: 'Security compliance assessment for Q1',
+      createdAt: '2024-01-10',
+      priority: 'Medium'
+    }
+  ]);
+  const [newProject, setNewProject] = useState({
+    name: '',
+    description: '',
+    priority: 'Medium'
+  });
+  
+  const handleCreateProject = () => {
+    if (newProject.name.trim() && newProject.description.trim()) {
+      const project = {
+        id: Date.now(),
+        name: newProject.name,
+        status: 'Draft',
+        description: newProject.description,
+        createdAt: new Date().toISOString().split('T')[0],
+        priority: newProject.priority
+      };
+      
+      setProjects([project, ...projects]);
+      setNewProject({ name: '', description: '', priority: 'Medium' });
+      setShowNewProjectForm(false);
+    }
+  };
+  
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'In Progress': return '#059669';
+      case 'Pending': return '#d97706';
+      case 'Draft': return '#6b7280';
+      case 'Completed': return '#10b981';
+      default: return '#6b7280';
+    }
+  };
+  
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'High': return '#dc2626';
+      case 'Medium': return '#d97706';
+      case 'Low': return '#059669';
+      default: return '#6b7280';
+    }
+  };
+  
+  return (
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
+          Product Compliance Council
+        </h1>
+        <button
+          onClick={() => navigate('/')}
+          style={{
+            padding: '12px 24px',
+            backgroundColor: '#dc2626',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}
+        >
+          Sign Out
+        </button>
+      </div>
+      
+      {/* New Project Form */}
+      {showNewProjectForm && (
+        <div style={{ 
+          backgroundColor: 'white', 
+          padding: '24px', 
+          borderRadius: '12px', 
+          boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+          marginBottom: '24px'
+        }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '20px', color: '#1f2937' }}>
+            Create New Compliance Review
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
+                Project Name
+              </label>
+              <input
+                type="text"
+                value={newProject.name}
+                onChange={(e) => setNewProject({...newProject, name: e.target.value})}
+                placeholder="Enter project name"
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
+                Description
+              </label>
+              <textarea
+                value={newProject.description}
+                onChange={(e) => setNewProject({...newProject, description: e.target.value})}
+                placeholder="Describe the compliance requirements"
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
+                Priority
+              </label>
+              <select
+                value={newProject.priority}
+                onChange={(e) => setNewProject({...newProject, priority: e.target.value})}
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowNewProjectForm(false)}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateProject}
+                style={{
+                  padding: '12px 24px',
+                  backgroundColor: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}
+              >
+                Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Project Cards */}
+      <div style={{ marginBottom: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '24px', fontWeight: '600', color: '#1f2937' }}>
+            Compliance Projects
+          </h2>
+          <button
+            onClick={() => setShowNewProjectForm(!showNewProjectForm)}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            {showNewProjectForm ? 'Cancel' : 'New Compliance Review'}
+          </button>
+        </div>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+          {projects.map((project) => (
+            <div key={project.id} style={{
+              backgroundColor: 'white',
+              padding: '20px',
+              borderRadius: '12px',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              border: '1px solid #e5e7eb'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
+                  {project.name}
+                </h3>
+                <div style={{
+                  padding: '4px 12px',
+                  backgroundColor: getStatusColor(project.status) + '20',
+                  color: getStatusColor(project.status),
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}>
+                  {project.status}
+                </div>
+              </div>
+              
+              <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>
+                {project.description}
+              </p>
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{
+                  padding: '4px 8px',
+                  backgroundColor: getPriorityColor(project.priority) + '20',
+                  color: getPriorityColor(project.priority),
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}>
+                  {project.priority} Priority
+                </div>
+                <span style={{ color: '#9ca3af', fontSize: '12px' }}>
+                  Created: {project.createdAt}
+                </span>
+              </div>
+              
+              <div style={{ marginTop: '16px', display: 'flex', gap: '8px' }}>
+                <button style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#f3f4f6',
+                  color: '#374151',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  View Details
+                </button>
+                <button 
+                  onClick={() => navigate('/compliance-review')}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Start Review
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Quick Actions */}
+      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
+          Quick Actions
+        </h2>
+        <div style={{ display: 'flex', gap: '16px' }}>
+          <button style={{
+            padding: '12px 24px',
+            backgroundColor: '#f3f4f6',
+            color: '#374151',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}>
+            View Reports
+          </button>
+          <button style={{
+            padding: '12px 24px',
+            backgroundColor: '#f3f4f6',
+            color: '#374151',
+            border: '1px solid #d1d5db',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: 'pointer'
+          }}>
+            Export Data
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Compliance Review Page with original comprehensive functionality
+function ComplianceReviewPage() {
+  const navigate = useNavigate();
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [productDescription, setProductDescription] = useState(
+    "Adding a daily mode toggle to user profile",
+  );
+  const [dragActive, setDragActive] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({
+    type: null,
+    message: ''
+  });
+  const [githubUrl, setGithubUrl] = useState('');
+  const [githubUrlError, setGithubUrlError] = useState('');
+  const [settlementFiles, setSettlementFiles] = useState([]);
+  const [settlementDragActive, setSettlementDragActive] = useState(false);
+  const [isUploadingSettlements, setIsUploadingSettlements] = useState(false);
+  const [settlementUploadStatus, setSettlementUploadStatus] = useState({
+    type: null,
+    message: ''
+  });
+  const [figmaUrl, setFigmaUrl] = useState('');
+  const [figmaUrlError, setFigmaUrlError] = useState('');
+
+  // Dynamic compliance analysis data
+  const [analysis, setAnalysis] = useState({
+    status: "pending",
+    message: "Upload a PRD to generate compliance analysis",
+    details: [],
+  });
+
+  const [schemaData, setSchemaData] = useState({
+    email: {
+      type: "string",
+      format: "email",
+    },
+    notes: ["Upload a PRD to analyze API schema compliance"],
+    suggestions: ["Generate legal review to get specific recommendations"],
+    mitigations: ["Analysis will provide targeted mitigation strategies"],
+  });
+
+  const [legalReview, setLegalReview] = useState({
+    facts: [
+      "Upload a Product Requirements Document (PRD) to begin analysis",
+      "Click 'Generate Legal Review' to analyze compliance",
+    ],
+    notes: ["Compliance analysis will be generated based on your PRD"],
+    suggestions: ["Review will provide specific compliance recommendations"],
+    mitigations: [
+      "Analysis will identify required compliance measures",
+      "Recommendations will be tailored to your product",
+    ],
+  });
+
+  const [complianceAnalysis, setComplianceAnalysis] = useState(null);
+
+  const handleDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setUploadedFile(e.dataTransfer.files[0]);
+    }
+  }, []);
+
+  const handleFileInput = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setUploadedFile(e.target.files[0]);
+    }
+  };
+
+  const validateGitHubUrl = (url) => {
+    if (!url.trim()) return true; // Empty URL is valid (optional field)
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'github.com' && urlObj.pathname.split('/').length >= 3;
+    } catch {
+      return false;
+    }
+  };
+
+  const handleGithubUrlChange = (e) => {
+    const url = e.target.value;
+    setGithubUrl(url);
+    
+    if (url.trim() && !validateGitHubUrl(url)) {
+      setGithubUrlError('Please enter a valid GitHub repository URL');
+    } else {
+      setGithubUrlError('');
+    }
+  };
+
+  const validateFigmaUrl = (url) => {
+    if (!url.trim()) return true; // Empty URL is valid (optional field)
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname === 'www.figma.com' || urlObj.hostname === 'figma.com';
+    } catch {
+      return false;
+    }
+  };
+
+  const handleFigmaUrlChange = (e) => {
+    const url = e.target.value;
+    setFigmaUrl(url);
+    
+    if (url.trim() && !validateFigmaUrl(url)) {
+      setFigmaUrlError('Please enter a valid Figma URL');
+    } else {
+      setFigmaUrlError('');
+    }
+  };
+
+  // Settlement file handlers
+  const handleSettlementDrag = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setSettlementDragActive(true);
+    } else if (e.type === "dragleave") {
+      setSettlementDragActive(false);
+    }
+  }, []);
+
+  const handleSettlementDrop = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSettlementDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const newFiles = Array.from(e.dataTransfer.files).filter((file: File) => 
+        file.type === 'application/pdf'
+      );
+      setSettlementFiles(prev => [...prev, ...newFiles]);
+    }
+  }, []);
+
+  const handleSettlementFileInput = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files).filter((file: File) => 
+        file.type === 'application/pdf'
+      );
+      setSettlementFiles(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeSettlementFile = (index) => {
+    setSettlementFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUploadSettlements = async () => {
+    if (settlementFiles.length === 0) {
+      return;
+    }
+
+    setIsUploadingSettlements(true);
+    setSettlementUploadStatus({ type: null, message: '' });
+
+    try {
+      const formData = new FormData();
+      settlementFiles.forEach((file, index) => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch('/api/upload-settlements', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Settlement files uploaded successfully:', result);
+        setSettlementUploadStatus({
+          type: 'success',
+          message: `${result.uploadedCount} settlement files uploaded successfully`
+        });
+        setSettlementFiles([]); // Clear the files after successful upload
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        console.error('Settlement upload failed:', errorData.message);
+        setSettlementUploadStatus({
+          type: 'error',
+          message: errorData.message || 'Upload failed'
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading settlement files:', error);
+      setSettlementUploadStatus({
+        type: 'error',
+        message: 'Network error occurred while uploading settlement files'
+      });
+    } finally {
+      setIsUploadingSettlements(false);
+    }
+  };
+
+  const getComplianceBadgeText = (compliance: string) => {
+    switch (compliance.toLowerCase()) {
+      case 'compliant':
+        return 'Compliant';
+      case 'non-compliant':
+        return 'Non-Compliant';
+      case 'requires-review':
+        return 'Requires Review';
+      case 'error':
+        return 'Error';
+      default:
+        return 'Unknown';
+    }
+  };
+
+  const generateLegalBriefPDF = async () => {
+    if (!complianceAnalysis) {
+      alert('Please generate a legal review first before downloading the brief.');
+      return;
+    }
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const contentWidth = pageWidth - (2 * margin);
+      let yPosition = margin;
+
+      // Title
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Product Legal Brief', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 15;
+
+      // Date
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 20;
+
+      // Regulations Section
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('1. Regulations', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+
+      // COPPA
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('COPPA (Children\'s Online Privacy Protection Act):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.coppa.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.coppa.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.coppa.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.coppa.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.coppa.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // HIPAA
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('HIPAA (Health Insurance Portability and Accountability Act):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.hipaa.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.hipaa.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.hipaa.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.hipaa.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.hipaa.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // GDPR
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('GDPR (General Data Protection Regulation):', margin, yPosition);
+      yPosition += 6;
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Status: ${getComplianceBadgeText(complianceAnalysis.gdpr.compliance)}`, margin + 5, yPosition);
+      yPosition += 5;
+      
+      if (complianceAnalysis.gdpr.issues.length > 0) {
+        pdf.text('Issues:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.gdpr.issues.forEach(issue => {
+          pdf.text(`• ${issue}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+
+      if (complianceAnalysis.gdpr.recommendations.length > 0) {
+        pdf.text('Recommendations:', margin + 5, yPosition);
+        yPosition += 5;
+        complianceAnalysis.gdpr.recommendations.forEach(rec => {
+          pdf.text(`• ${rec}`, margin + 10, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 15;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // Policies Section
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('2. Policies', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Based on the compliance analysis, the following policies should be implemented:', margin, yPosition);
+      yPosition += 8;
+
+      // Generate policy recommendations based on compliance status
+      const allIssues = [
+        ...complianceAnalysis.coppa.issues,
+        ...complianceAnalysis.hipaa.issues,
+        ...complianceAnalysis.gdpr.issues
+      ];
+
+      if (allIssues.length > 0) {
+        pdf.text('Required Policy Updates:', margin, yPosition);
+        yPosition += 6;
+        allIssues.forEach(issue => {
+          pdf.text(`• Address: ${issue}`, margin + 5, yPosition);
+          yPosition += 5;
+        });
+      }
+      yPosition += 10;
+
+      // Data Deletion Requirements
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('3. Data Deletion Requirements', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('The following data deletion requirements must be implemented:', margin, yPosition);
+      yPosition += 8;
+
+      if (complianceAnalysis.gdpr.compliance !== 'compliant') {
+        pdf.text('• Right to be forgotten: Users must be able to request complete data deletion', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Data retention policies must be clearly defined and communicated', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.coppa.compliance !== 'compliant') {
+        pdf.text('• Children\'s data must be deleted upon request from parents/guardians', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.hipaa.compliance !== 'compliant') {
+        pdf.text('• PHI data must be securely deleted according to HIPAA guidelines', margin + 5, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 10;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // AI Risk Assessment
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('4. AI Risk Assessment', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('AI-powered compliance analysis indicates the following risk factors:', margin, yPosition);
+      yPosition += 8;
+
+      const riskLevels = {
+        coppa: complianceAnalysis.coppa.compliance === 'compliant' ? 'Low' : 'High',
+        hipaa: complianceAnalysis.hipaa.compliance === 'compliant' ? 'Low' : 'High',
+        gdpr: complianceAnalysis.gdpr.compliance === 'compliant' ? 'Low' : 'High'
+      };
+
+      pdf.text(`• COPPA Risk Level: ${riskLevels.coppa}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• HIPAA Risk Level: ${riskLevels.hipaa}`, margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text(`• GDPR Risk Level: ${riskLevels.gdpr}`, margin + 5, yPosition);
+      yPosition += 10;
+
+      // Login & Profile Mockup
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('5. Login & Profile Mockup', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Recommended user interface elements for compliance:', margin, yPosition);
+      yPosition += 8;
+
+      if (complianceAnalysis.coppa.compliance !== 'compliant') {
+        pdf.text('• Age verification gate for users under 13', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Parental consent forms and verification', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.gdpr.compliance !== 'compliant') {
+        pdf.text('• Clear consent checkboxes for data processing', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Privacy settings dashboard for user control', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Data export and deletion request forms', margin + 5, yPosition);
+        yPosition += 5;
+      }
+
+      if (complianceAnalysis.hipaa.compliance !== 'compliant') {
+        pdf.text('• Secure authentication for health data access', margin + 5, yPosition);
+        yPosition += 5;
+        pdf.text('• Audit trail for all health data interactions', margin + 5, yPosition);
+        yPosition += 5;
+      }
+      yPosition += 10;
+
+      // Check if we need a new page
+      if (yPosition > pageHeight - 60) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      // Data Flow Screenshot
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('6. Data Flow Screenshot', margin, yPosition);
+      yPosition += 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Data flow considerations based on compliance requirements:', margin, yPosition);
+      yPosition += 8;
+
+      pdf.text('• Data collection points must be clearly identified', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data storage locations and encryption methods', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data sharing and third-party access controls', margin + 5, yPosition);
+      yPosition += 5;
+      pdf.text('• Data retention and deletion workflows', margin + 5, yPosition);
+      yPosition += 5;
+
+      // Footer
+      yPosition = pageHeight - 20;
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'italic');
+      pdf.text('This legal brief was generated automatically based on AI-powered compliance analysis.', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+      pdf.text('Please consult with legal professionals for final compliance decisions.', pageWidth / 2, yPosition, { align: 'center' });
+
+      // Save the PDF
+      pdf.save('product-legal-brief.pdf');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
+
+  const handleRequestLegalReview = async () => {
+    if (!uploadedFile) {
+      return;
+    }
+
+    if (githubUrlError || figmaUrlError) {
+      setUploadStatus({
+        type: 'error',
+        message: 'Please fix the URL format before submitting'
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus({ type: null, message: '' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      formData.append('productDescription', productDescription);
+      if (githubUrl.trim()) {
+        formData.append('githubUrl', githubUrl.trim());
+      }
+      if (figmaUrl.trim()) {
+        formData.append('figmaUrl', figmaUrl.trim());
+      }
+
+      const response = await fetch('/api/upload-requirements', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('File uploaded successfully:', result);
+        setUploadStatus({
+          type: 'success',
+          message: `File uploaded successfully: ${result.filename}`
+        });
+        
+        // Process compliance analysis results
+        if (result.complianceAnalysis) {
+          setComplianceAnalysis(result.complianceAnalysis);
+          
+          // Update analysis status
+          const overallStatus = result.complianceAnalysis.gdpr?.compliance === 'compliant' && 
+                               result.complianceAnalysis.coppa?.compliance === 'compliant' && 
+                               result.complianceAnalysis.hipaa?.compliance === 'compliant' ? 'good' : 'requires-review';
+          
+          setAnalysis({
+            status: overallStatus,
+            message: overallStatus === 'good' ? 
+              "Good to proceed with the proposed changes" : 
+              "Review required - compliance issues identified",
+            details: [
+              `GDPR: ${result.complianceAnalysis.gdpr?.compliance || 'pending'}`,
+              `COPPA: ${result.complianceAnalysis.coppa?.compliance || 'pending'}`,
+              `HIPAA: ${result.complianceAnalysis.hipaa?.compliance || 'pending'}`
+            ]
+          });
+          
+          // Update legal review with compliance findings
+          const facts = [
+            `Product: ${productDescription}`,
+            `GDPR Status: ${result.complianceAnalysis.gdpr?.compliance || 'pending'}`,
+            `COPPA Status: ${result.complianceAnalysis.coppa?.compliance || 'pending'}`,
+            `HIPAA Status: ${result.complianceAnalysis.hipaa?.compliance || 'pending'}`
+          ];
+          
+          const notes = [
+            ...(result.complianceAnalysis.gdpr?.issues || []),
+            ...(result.complianceAnalysis.coppa?.issues || []),
+            ...(result.complianceAnalysis.hipaa?.issues || [])
+          ];
+          
+          const suggestions = [
+            ...(result.complianceAnalysis.gdpr?.recommendations || []),
+            ...(result.complianceAnalysis.coppa?.recommendations || []),
+            ...(result.complianceAnalysis.hipaa?.recommendations || [])
+          ];
+          
+          const mitigations = [
+            "Implement required compliance measures based on analysis",
+            "Review and update privacy policies as needed",
+            "Establish data handling procedures for identified risks"
+          ];
+          
+          setLegalReview({ facts, notes, suggestions, mitigations });
+          
+          // Update schema data with compliance insights
+          setSchemaData({
+            email: {
+              type: "string",
+              format: "email",
+            },
+            notes: notes.slice(0, 3), // Show first 3 issues
+            suggestions: suggestions.slice(0, 3), // Show first 3 recommendations
+            mitigations: mitigations.slice(0, 2) // Show first 2 mitigations
+          });
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+        console.error('Upload failed:', errorData.message);
+        setUploadStatus({
+          type: 'error',
+          message: errorData.message || 'Upload failed'
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      setUploadStatus({
+        type: 'error',
+        message: 'Network error occurred while uploading file'
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f8fafc' }}>
+      {/* Header */}
+      <header style={{ 
+        borderBottom: '1px solid #e2e8f0', 
+        backgroundColor: 'white', 
+        padding: '16px 24px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#1e293b', margin: 0 }}>
+              Combo AI
+            </h1>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '4px 0 0 0' }}>
+              Streamline product requirements review and compliance analysis
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              onClick={() => navigate('/compliance-council')}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              ← Back to Projects
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Sign Out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <div style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        padding: '24px'
+      }}>
+        {/* Top Row - 3 Cards */}
+        <div style={{ 
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '24px',
+          marginBottom: '24px'
+        }}>
+          {/* Launch Compliance Section */}
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            border: '1px solid #e2e8f0',
+            height: 'fit-content'
+          }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
+                📄 Launch Compliance
+              </h2>
+              <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+                Submit your product requirements for evaluation and advice.
+              </p>
+            </div>
+            <div style={{ padding: '24px' }}>
+                                      <div className="space-y-6">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block">
+                  Product description
+                </label>
+                <textarea
+                  value={productDescription}
+                  onChange={(e) => setProductDescription(e.target.value)}
+                  className="min-h-[40px] max-h-[80px] text-sm w-full p-3 border border-input rounded-md resize-vertical"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-3 block">
+                  Product requirements doc
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    dragActive
+                      ? "border-primary bg-accent/50"
+                      : "border-muted-foreground/30 hover:border-muted-foreground/50"
+                  }`}
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    onChange={handleFileInput}
+                    accept=".pdf,.doc,.docx,.txt"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <div className="text-3xl mb-3">📁</div>
+                    {uploadedFile ? (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {uploadedFile.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {(uploadedFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-muted-foreground">
+                          Drag and drop file or click to select
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PDF, DOC, or TXT files
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-foreground mb-2 block flex items-center gap-2">
+                  🔗 GitHub Repository URL (Optional)
+                </label>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <input
+                      type="url"
+                      placeholder="https://github.com/username/repository"
+                      value={githubUrl}
+                      onChange={handleGithubUrlChange}
+                      className={`text-sm w-full p-3 border rounded-md ${
+                        githubUrlError ? 'border-red-500' : 'border-input'
+                      }`}
+                    />
+                    {githubUrl && !githubUrlError && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                      </div>
+                    )}
+                  </div>
+                  {githubUrlError ? (
+                    <p className="text-xs text-red-500">{githubUrlError}</p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Paste your GitHub repository URL to provide code context for the review
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-foreground">
+                Analysis
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-start gap-3">
+                  <div className="text-xl">
+                    {analysis.status === 'good' ? '✅' : 
+                     analysis.status === 'requires-review' ? '⚠️' : '⏳'}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {analysis.message}
+                    </p>
+                  </div>
+                </div>
+                
+                {analysis.details.length > 0 && (
+                  <div className="bg-muted rounded-md p-3 mt-2">
+                    <h4 className="text-xs font-medium text-foreground mb-2">
+                      Compliance Status:
+                    </h4>
+                    {analysis.details.map((detail, index) => (
+                      <div key={index} className="flex items-center gap-2 mb-1">
+                        <div className="h-1.5 w-1.5 bg-primary rounded-full" />
+                        <p className="text-xs text-muted-foreground">
+                          {detail}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+              <button 
+                onClick={handleRequestLegalReview}
+                disabled={!uploadedFile || isUploading}
+                className={`w-full p-3 rounded-md text-sm font-medium transition-colors ${
+                  uploadedFile && !isUploading
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed'
+                }`}
+              >
+                {isUploading ? 'Analyzing...' : 'Generate Legal Review'}
+              </button>
+              
+              {uploadStatus.type && (
+                <div className={`mt-3 p-3 rounded-md text-sm ${
+                  uploadStatus.type === 'success' 
+                    ? 'bg-green-50 text-green-800 border border-green-200' 
+                    : 'bg-red-50 text-red-800 border border-red-200'
+                }`}>
+                  {uploadStatus.message}
+                </div>
+              )}
+            </div>
+          </div>
+
+        {/* Eugene's API Schema Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0',
+          height: 'fit-content'
+        }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                <span style={{ 
+                  display: 'inline-block',
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  lineHeight: '20px',
+                  marginRight: '8px'
+                }}>
+                  E
+                </span>
+                Eugene's API Schema
+              </h2>
+              {complianceAnalysis && (
+                <div style={{
+                  padding: '4px 12px',
+                  backgroundColor: '#f0fdf4',
+                  color: '#166534',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  🔄 Updated
+                </div>
+              )}
+            </div>
+            <div style={{
+              padding: '4px 12px',
+              backgroundColor: '#f1f5f9',
+              color: '#475569',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: '500',
+              display: 'inline-block'
+            }}>
+              {complianceAnalysis ? 'Compliance analysis applied' : 'Potential compliance issue submitted'}
+            </div>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Json
+              </h3>
+              <div style={{ backgroundColor: '#f1f5f9', borderRadius: '6px', padding: '12px' }}>
+                <pre style={{ 
+                  color: '#1f2937', 
+                  whiteSpace: 'pre-wrap',
+                  fontSize: '14px',
+                  fontFamily: 'monospace',
+                  margin: 0
+                }}>
+{`"email": {
+  "type": "string",
+  "format": "email"
+}`}
+                </pre>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Notes
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {schemaData.notes.map((note, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Suggestions
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {schemaData.suggestions.map((suggestion, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{suggestion}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Mitigations
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {schemaData.mitigations.map((mitigation, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{mitigation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Figma Import Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0',
+          height: 'fit-content'
+        }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
+              🎨 Figma Import
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+              Import design files and components for compliance review.
+            </p>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
+                Design Files
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type="url"
+                    placeholder="https://www.figma.com/file/..."
+                    value={figmaUrl}
+                    onChange={handleFigmaUrlChange}
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      border: `1px solid ${figmaUrlError ? '#ef4444' : '#d1d5db'}`,
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                  {figmaUrl && !figmaUrlError && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      right: '12px', 
+                      top: '50%', 
+                      transform: 'translateY(-50%)' 
+                    }}>
+                      <div style={{ 
+                        width: '8px', 
+                        height: '8px', 
+                        backgroundColor: '#10b981', 
+                        borderRadius: '50%' 
+                      }} />
+                    </div>
+                  )}
+                </div>
+                {figmaUrlError ? (
+                  <p style={{ fontSize: '12px', color: '#ef4444' }}>{figmaUrlError}</p>
+                ) : (
+                  <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                    Paste your Figma design URL to import design context
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div style={{ 
+              backgroundColor: '#f1f5f9', 
+              borderRadius: '6px', 
+              padding: '12px', 
+              marginBottom: '16px' 
+            }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Import Status
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    backgroundColor: '#f59e0b', 
+                    borderRadius: '50%' 
+                  }} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    Ready to import design files
+                  </p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    backgroundColor: '#3b82f6', 
+                    borderRadius: '50%' 
+                  }} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                    Components will be analyzed for compliance
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <button 
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+              disabled={!figmaUrl.trim() || !!figmaUrlError}
+            >
+              Import Design Files
+            </button>
+          </div>
+        </div>
+        </div> {/* Close top row */}
+        
+        {/* Bottom Row - 3 Cards */}
+        <div style={{ 
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '24px'
+        }}>
+
+        {/* Company Settlements Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0',
+          height: 'fit-content'
+        }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
+              ⚖️ Company Settlements
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+              Upload company settlement PDF files for legal review and reference.
+            </p>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '12px', display: 'block' }}>
+                Settlement Documents
+              </label>
+              <div
+                style={{
+                  border: '2px dashed',
+                  borderColor: settlementDragActive ? '#3b82f6' : '#d1d5db',
+                  borderRadius: '8px',
+                  padding: '24px',
+                  textAlign: 'center',
+                  backgroundColor: settlementDragActive ? '#eff6ff' : '#f9fafb',
+                  transition: 'all 0.2s ease'
+                }}
+                onDragEnter={handleSettlementDrag}
+                onDragLeave={handleSettlementDrag}
+                onDragOver={handleSettlementDrag}
+                onDrop={handleSettlementDrop}
+              >
+                <input
+                  type="file"
+                  id="settlement-file-upload"
+                  style={{ display: 'none' }}
+                  onChange={handleSettlementFileInput}
+                  accept=".pdf"
+                  multiple
+                />
+                <label htmlFor="settlement-file-upload" style={{ cursor: 'pointer' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>📁</div>
+                  <div>
+                    <p style={{ fontSize: '14px', color: '#6b7280' }}>
+                      Drag and drop PDF files or click to select
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#9ca3af', marginTop: '4px' }}>
+                      PDF files only
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {settlementFiles.length > 0 && (
+              <div style={{ marginBottom: '16px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                  Selected Files ({settlementFiles.length})
+                </h3>
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '8px', 
+                  maxHeight: '128px', 
+                  overflowY: 'auto' 
+                }}>
+                  {settlementFiles.map((file, index) => (
+                    <div key={index} style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'space-between', 
+                      padding: '8px', 
+                      backgroundColor: '#f1f5f9', 
+                      borderRadius: '6px' 
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ 
+                          fontSize: '14px', 
+                          fontWeight: '500', 
+                          color: '#1f2937', 
+                          margin: 0,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}>
+                          {file.name}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                          {(file.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeSettlementFile(index)}
+                        style={{
+                          width: '24px',
+                          height: '24px',
+                          backgroundColor: 'transparent',
+                          color: '#6b7280',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '18px',
+                          fontWeight: 'bold',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button 
+              onClick={handleUploadSettlements}
+              disabled={settlementFiles.length === 0 || isUploadingSettlements}
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                backgroundColor: settlementFiles.length === 0 || isUploadingSettlements ? '#9ca3af' : '#f1f5f9',
+                color: settlementFiles.length === 0 || isUploadingSettlements ? '#6b7280' : '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: settlementFiles.length === 0 || isUploadingSettlements ? 'not-allowed' : 'pointer',
+                opacity: settlementFiles.length === 0 || isUploadingSettlements ? 0.7 : 1
+              }}
+            >
+              {isUploadingSettlements ? 'Uploading...' : 'Upload Settlement Files'}
+            </button>
+            
+            {settlementUploadStatus.type && (
+              <div style={{ 
+                marginTop: '12px',
+                padding: '12px', 
+                borderRadius: '6px', 
+                fontSize: '14px',
+                backgroundColor: settlementUploadStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                color: settlementUploadStatus.type === 'success' ? '#166534' : '#dc2626',
+                border: `1px solid ${settlementUploadStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`
+              }}>
+                {settlementUploadStatus.message}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Product Legal Review Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0',
+          height: 'fit-content'
+        }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: 0 }}>
+                ℹ️ Product Legal Review
+              </h2>
+              {complianceAnalysis && (
+                <div style={{
+                  padding: '4px 12px',
+                  backgroundColor: '#f0fdf4',
+                  color: '#166534',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  border: '1px solid #bbf7d0'
+                }}>
+                  ✅ Analysis Complete
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Facts
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {legalReview.facts.map((fact, index) => (
+                  <p key={index} style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>
+                    {fact}
+                  </p>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Notes
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {legalReview.notes.map((note, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{note}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Suggestions
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {legalReview.suggestions.map((suggestion, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{suggestion}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Mitigations
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {legalReview.mitigations.map((mitigation, index) => (
+                  <div key={index} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <div style={{ 
+                      width: '6px', 
+                      height: '6px', 
+                      backgroundColor: '#9ca3af', 
+                      borderRadius: '50%', 
+                      marginTop: '8px' 
+                    }} />
+                    <p style={{ fontSize: '14px', color: '#6b7280', margin: 0 }}>{mitigation}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Download Legal Brief Button */}
+            {complianceAnalysis && (
+              <div style={{ 
+                marginTop: '24px', 
+                paddingTop: '20px', 
+                borderTop: '1px solid #e2e8f0' 
+              }}>
+                <button 
+                  onClick={generateLegalBriefPDF}
+                  style={{
+                    width: '100%',
+                    padding: '12px 24px',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  📥 Download Legal Brief
+                </button>
+                <p style={{ 
+                  fontSize: '12px', 
+                  color: '#6b7280', 
+                  textAlign: 'center', 
+                  marginTop: '8px' 
+                }}>
+                  Generate a comprehensive PDF legal brief with compliance analysis
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Data Flow Section */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+          border: '1px solid #e2e8f0',
+          height: 'fit-content'
+        }}>
+          <div style={{ padding: '24px', borderBottom: '1px solid #e2e8f0' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1e293b', margin: '0 0 8px 0' }}>
+              <span style={{ 
+                display: 'inline-block',
+                width: '20px',
+                height: '20px',
+                backgroundColor: '#3b82f6',
+                color: 'white',
+                borderRadius: '4px',
+                fontSize: '12px',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                lineHeight: '20px',
+                marginRight: '8px'
+              }}>
+                D
+              </span>
+              Data Flow
+            </h2>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: 0 }}>
+              Analyze data flow and privacy implications.
+            </p>
+          </div>
+          <div style={{ padding: '24px' }}>
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Data Sources
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    backgroundColor: '#3b82f6', 
+                    borderRadius: '50%' 
+                  }} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>User input data</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    backgroundColor: '#10b981', 
+                    borderRadius: '50%' 
+                  }} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Third-party integrations</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    backgroundColor: '#f59e0b', 
+                    borderRadius: '50%' 
+                  }} />
+                  <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>Analytics data</p>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px' }}>
+                Privacy Impact
+              </h3>
+              <div style={{ backgroundColor: '#f1f5f9', borderRadius: '6px', padding: '12px' }}>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: 0 }}>
+                  Data flow analysis will be performed to identify privacy implications and compliance requirements.
+                </p>
+              </div>
+            </div>
+
+            <button 
+              style={{
+                width: '100%',
+                padding: '12px 24px',
+                backgroundColor: '#f1f5f9',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Analyze Data Flow
+            </button>
+          </div>
+        </div>
+        </div> {/* Close bottom row */}
+      </div>
+    </div>
+  );
+}
+
+// Simple working LoginForm component with Firebase auth (temporarily disabled)
+function SimpleLoginForm() {
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const navigate = useNavigate();
+  
+  // Redirect to compliance council after successful auth
+  useEffect(() => {
+    if (success && success.includes('successfully')) {
+      const timer = setTimeout(() => {
+        navigate('/compliance-council');
+      }, 2000); // Wait 2 seconds to show success message
+      
+      return () => clearTimeout(timer);
+    }
+  }, [success, navigate]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    console.log('Starting authentication process...');
+    console.log('Form data:', { isSignUp, email, password, displayName });
+    
+    try {
+      if (isSignUp) {
+        console.log('Attempting to sign up user...');
+        const result = await signUpUser(email, password, displayName);
+        console.log('Sign up result:', result);
+        
+        if (result.success && result.user) {
+          console.log('User created successfully, creating profile...');
+          // Create user profile
+          const profileResult = await createUserProfile(result.user.uid, {
+            displayName,
+            email,
+            role: 'user'
+          });
+          console.log('Profile creation result:', profileResult);
+          
+          setSuccess('Account created successfully! Welcome to Combo AI! 🎉');
+          // Clear form
+          setEmail('');
+          setPassword('');
+          setDisplayName('');
+        } else {
+          console.error('Sign up failed:', result.error);
+          setError(result.error || 'Sign up failed');
+        }
+      } else {
+        console.log('Attempting to sign in user...');
+        const result = await signInUser(email, password);
+        console.log('Sign in result:', result);
+        
+        if (result.success) {
+          setSuccess('Signed in successfully! Welcome back! 🎉');
+          // Clear form
+          setEmail('');
+          setPassword('');
+        } else {
+          console.error('Sign in failed:', result.error);
+          setError(result.error || 'Sign in failed');
+        }
+      }
+    } catch (err) {
+      console.error('Authentication error caught:', err);
+      setError('An unexpected error occurred');
+      console.error('Auth error:', err);
+    } finally {
+      console.log('Authentication process completed, setting loading to false');
+      setLoading(false);
+    }
+  };
+  
+  return (
+    <div style={{ width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+        <div style={{ display: 'flex', backgroundColor: '#f3f4f6', borderRadius: '8px', padding: '4px' }}>
+          <button
+            type="button"
+            onClick={() => setIsSignUp(false)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              backgroundColor: !isSignUp ? 'white' : 'transparent',
+              color: !isSignUp ? '#1f2937' : '#6b7280',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: !isSignUp ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsSignUp(true)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              backgroundColor: isSignUp ? 'white' : 'transparent',
+              color: isSignUp ? '#1f2937' : '#6b7280',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: isSignUp ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {isSignUp && (
+          <div>
+            <label htmlFor="displayName" style={{ fontSize: '14px', fontWeight: '500', color: '#1f293b', marginBottom: '8px', display: 'block' }}>
+              Display Name
+            </label>
+            <input
+              id="displayName"
+              type="text"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="Enter your full name"
+              required={isSignUp}
+              style={{
+                width: '100%',
+                height: '44px',
+                padding: '0 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '16px'
+              }}
+            />
+          </div>
+        )}
+        
+        <div>
+          <label htmlFor="email" style={{ fontSize: '14px', fontWeight: '500', color: '#1f293b', marginBottom: '8px', display: 'block' }}>
+            Email Address
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Enter your email address"
+            required
+            style={{
+              width: '100%',
+              height: '44px',
+              padding: '0 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '16px'
+            }}
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="password" style={{ fontSize: '14px', fontWeight: '500', color: '#1f293b', marginBottom: '8px', display: 'block' }}>
+            Password
+          </label>
+          <input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter your password"
+            required
+            style={{
+              width: '100%',
+              height: '44px',
+              padding: '0 12px',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              fontSize: '16px'
+            }}
+          />
+        </div>
+
+        {error && (
+          <div style={{ padding: '16px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '8px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>⚠️</span>
+              {error}
+            </div>
+          </div>
+        )}
+
+        {success && (
+          <div style={{ padding: '16px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', borderRadius: '8px', fontSize: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>✅</span>
+              {success}
+            </div>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          style={{
+            width: '100%',
+            height: '44px',
+            background: loading ? '#9ca3af' : 'linear-gradient(to right, #2563eb, #4f46e5)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading ? 0.7 : 1
+          }}
+        >
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <div style={{ width: '16px', height: '16px', border: '2px solid #ffffff', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+              Processing...
+            </div>
+          ) : (
+            isSignUp ? 'Create Account' : 'Sign In'
+          )}
+        </button>
+
+        <div style={{ textAlign: 'center', paddingTop: '8px' }}>
+          <p style={{ fontSize: '14px', color: '#6b7280' }}>
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+            <button
+              type="button"
+              onClick={() => setIsSignUp(!isSignUp)}
+              style={{
+                marginLeft: '4px',
+                color: '#2563eb',
+                background: 'none',
+                border: 'none',
+                textDecoration: 'underline',
+                cursor: 'pointer',
+                fontWeight: '500'
+              }}
+            >
+              {isSignUp ? 'Sign in here' : 'Sign up here'}
+            </button>
+          </p>
+        </div>
+      </form>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Simple Index component
+function Index() {
+  console.log("Index component rendering");
+  const { currentUser, loading } = useAuth();
+  const navigate = useNavigate();
+  const [forceShowLogin, setForceShowLogin] = useState(false);
+  
+  // Check for force sign out parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('forceSignOut') || urlParams.has('clearCache')) {
+      console.log("🚨 FORCE SIGN OUT DETECTED - BYPASSING AUTHENTICATION 🚨");
+      setForceShowLogin(true);
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, []);
+  
+  // Check if we're coming from a sign out (no localStorage items)
+  useEffect(() => {
+    const hasAuthData = localStorage.getItem('firebase:authUser') || 
+                       localStorage.getItem('firebase:host:') ||
+                       sessionStorage.getItem('firebase:authUser') ||
+                       localStorage.getItem('firebase:authUser:turbocompliance-4a899') ||
+                       localStorage.getItem('firebase:host:turbocompliance-4a899.firebaseapp.com');
+    
+    if (!hasAuthData && !loading) {
+      console.log("No auth data found, forcing login display");
+      setForceShowLogin(true);
+    }
+  }, [loading]);
+  
+  // Always show login after 2 seconds regardless of loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log("Force showing login form after timeout");
+      setForceShowLogin(true);
+    }, 2000); // 2 second timeout
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Redirect authenticated users to compliance council (unless force sign out)
+  useEffect(() => {
+    if (!loading && currentUser && !forceShowLogin) {
+      console.log("User authenticated, redirecting to compliance council");
+      navigate('/compliance-council');
+    }
+  }, [currentUser, loading, navigate, forceShowLogin]);
+  
+  // If force sign out is active, completely ignore authentication state
+  if (forceShowLogin) {
+    console.log("Force sign out active - showing login form regardless of auth state");
+  }
+  
+  // Show loading only briefly, then always show login
+  if (loading && !forceShowLogin) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        backgroundColor: '#e0f2fe'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            border: '3px solid #0369a1', 
+            borderTop: '3px solid transparent', 
+            borderRadius: '50%', 
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#0369a1', fontSize: '16px' }}>Loading...</p>
+          <p style={{ color: '#64748b', fontSize: '14px', marginTop: '8px' }}>
+            <button 
+              onClick={() => setForceShowLogin(true)}
+              style={{ 
+                color: '#2563eb', 
+                background: 'none', 
+                border: 'none', 
+                textDecoration: 'underline', 
+                cursor: 'pointer'
+              }}
+            >
+              Skip to login
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user is authenticated and we're not forcing login, don't render the login form
+  if (currentUser && !forceShowLogin) {
+    return null;
+  }
+  
+  return (
+    <div style={{ 
+      padding: '40px', 
+      backgroundColor: '#e0f2fe', 
+      color: '#0c4a6e', 
+      fontSize: '20px',
+      minHeight: '100vh',
+      textAlign: 'center'
+    }}>
+      <h1 style={{ color: '#0369a1', fontSize: '36px', marginBottom: '20px' }}>
+        🎯 Combo AI - Product Compliance Council
+      </h1>
+      
+      <div style={{ 
+        backgroundColor: 'white', 
+        padding: '30px', 
+        borderRadius: '12px', 
+        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+        maxWidth: '600px',
+        margin: '0 auto 20px'
+      }}>
+        <h2 style={{ color: '#1e293b', fontSize: '24px', marginBottom: '15px' }}>
+          Welcome! 🎉
+        </h2>
+        <p style={{ color: '#64748b', marginBottom: '20px' }}>
+          Sign up or sign in to access the compliance dashboard.
+        </p>
+        
+        {/* Firebase LoginForm component */}
+        <LoginForm />
+      </div>
+      
+      <div style={{ 
+        backgroundColor: '#f1f5f9', 
+        padding: '20px', 
+        borderRadius: '8px',
+        maxWidth: '600px',
+        margin: '0 auto'
+      }}>
+        <p style={{ color: '#64748b', fontSize: '14px' }}>
+          ✅ React is working | ✅ Routing is working | ✅ Firebase Authentication enabled | ✅ Ready for login!
+        </p>
+      </div>
+    </div>
+  );
+}
+
+const App = () => (
+  <AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
+        <Route path="/compliance-review" element={<ComplianceReviewPage />} />
+        <Route path="*" element={<Index />} />
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
+);
+
+createRoot(document.getElementById("root")!).render(<App />);
