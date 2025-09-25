@@ -4,7 +4,9 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import jsPDF from 'jspdf';
-// import { signInUser, signUpUser, createUserProfile } from "./lib/firebase";
+import { signInUser, signUpUser, createUserProfile } from "./lib/firebase";
+import { AuthProvider, useAuth } from "./hooks/useAuth";
+import { LoginForm } from "./components/LoginForm";
 
 // Product Compliance Council Page
 function ProductComplianceCouncil() {
@@ -479,7 +481,7 @@ function ComplianceReviewPage() {
     e.stopPropagation();
     setSettlementDragActive(false);
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const newFiles = Array.from(e.dataTransfer.files).filter(file => 
+      const newFiles = Array.from(e.dataTransfer.files).filter((file: File) => 
         file.type === 'application/pdf'
       );
       setSettlementFiles(prev => [...prev, ...newFiles]);
@@ -488,7 +490,7 @@ function ComplianceReviewPage() {
 
   const handleSettlementFileInput = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files).filter(file => 
+      const newFiles = Array.from(e.target.files).filter((file: File) => 
         file.type === 'application/pdf'
       );
       setSettlementFiles(prev => [...prev, ...newFiles]);
@@ -1887,22 +1889,6 @@ function SimpleLoginForm() {
     console.log('Starting authentication process...');
     console.log('Form data:', { isSignUp, email, password, displayName });
     
-    // Simulate Firebase auth for debugging
-    setTimeout(() => {
-      if (isSignUp) {
-        setSuccess('Account created successfully! Welcome to Combo AI! 🎉 (Firebase temporarily disabled)');
-        setEmail('');
-        setPassword('');
-        setDisplayName('');
-      } else {
-        setSuccess('Signed in successfully! Welcome back! 🎉 (Firebase temporarily disabled)');
-        setEmail('');
-        setPassword('');
-      }
-      setLoading(false);
-    }, 1000);
-    
-    /* Real Firebase code (will re-enable after debugging)
     try {
       if (isSignUp) {
         console.log('Attempting to sign up user...');
@@ -1951,7 +1937,6 @@ function SimpleLoginForm() {
       console.log('Authentication process completed, setting loading to false');
       setLoading(false);
     }
-    */
   };
   
   return (
@@ -2143,6 +2128,102 @@ function SimpleLoginForm() {
 // Simple Index component
 function Index() {
   console.log("Index component rendering");
+  const { currentUser, loading } = useAuth();
+  const navigate = useNavigate();
+  const [forceShowLogin, setForceShowLogin] = useState(false);
+  
+  // Check for force sign out parameters
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('forceSignOut') || urlParams.has('clearCache')) {
+      console.log("🚨 FORCE SIGN OUT DETECTED - BYPASSING AUTHENTICATION 🚨");
+      setForceShowLogin(true);
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, '/');
+    }
+  }, []);
+  
+  // Check if we're coming from a sign out (no localStorage items)
+  useEffect(() => {
+    const hasAuthData = localStorage.getItem('firebase:authUser') || 
+                       localStorage.getItem('firebase:host:') ||
+                       sessionStorage.getItem('firebase:authUser') ||
+                       localStorage.getItem('firebase:authUser:turbocompliance-4a899') ||
+                       localStorage.getItem('firebase:host:turbocompliance-4a899.firebaseapp.com');
+    
+    if (!hasAuthData && !loading) {
+      console.log("No auth data found, forcing login display");
+      setForceShowLogin(true);
+    }
+  }, [loading]);
+  
+  // Always show login after 2 seconds regardless of loading state
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      console.log("Force showing login form after timeout");
+      setForceShowLogin(true);
+    }, 2000); // 2 second timeout
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Redirect authenticated users to compliance council (unless force sign out)
+  useEffect(() => {
+    if (!loading && currentUser && !forceShowLogin) {
+      console.log("User authenticated, redirecting to compliance council");
+      navigate('/compliance-council');
+    }
+  }, [currentUser, loading, navigate, forceShowLogin]);
+  
+  // If force sign out is active, completely ignore authentication state
+  if (forceShowLogin) {
+    console.log("Force sign out active - showing login form regardless of auth state");
+  }
+  
+  // Show loading only briefly, then always show login
+  if (loading && !forceShowLogin) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        backgroundColor: '#e0f2fe'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            border: '3px solid #0369a1', 
+            borderTop: '3px solid transparent', 
+            borderRadius: '50%', 
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#0369a1', fontSize: '16px' }}>Loading...</p>
+          <p style={{ color: '#64748b', fontSize: '14px', marginTop: '8px' }}>
+            <button 
+              onClick={() => setForceShowLogin(true)}
+              style={{ 
+                color: '#2563eb', 
+                background: 'none', 
+                border: 'none', 
+                textDecoration: 'underline', 
+                cursor: 'pointer'
+              }}
+            >
+              Skip to login
+            </button>
+          </p>
+        </div>
+      </div>
+    );
+  }
+  
+  // If user is authenticated and we're not forcing login, don't render the login form
+  if (currentUser && !forceShowLogin) {
+    return null;
+  }
   
   return (
     <div style={{ 
@@ -2172,8 +2253,8 @@ function Index() {
           Sign up or sign in to access the compliance dashboard.
         </p>
         
-        {/* Simple working LoginForm component */}
-        <SimpleLoginForm />
+        {/* Firebase LoginForm component */}
+        <LoginForm />
       </div>
       
       <div style={{ 
@@ -2184,7 +2265,7 @@ function Index() {
         margin: '0 auto'
       }}>
         <p style={{ color: '#64748b', fontSize: '14px' }}>
-          ✅ React is working | ✅ Routing is working | ✅ Simple LoginForm working | 🔄 Next: Add Firebase auth
+          ✅ React is working | ✅ Routing is working | ✅ Firebase Authentication enabled | ✅ Ready for login!
         </p>
       </div>
     </div>
@@ -2192,14 +2273,16 @@ function Index() {
 }
 
 const App = () => (
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<Index />} />
-      <Route path="*" element={<Index />} />
-      <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
-      <Route path="/compliance-review" element={<ComplianceReviewPage />} />
-    </Routes>
-  </BrowserRouter>
+  <AuthProvider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
+        <Route path="/compliance-review" element={<ComplianceReviewPage />} />
+        <Route path="*" element={<Index />} />
+      </Routes>
+    </BrowserRouter>
+  </AuthProvider>
 );
 
 createRoot(document.getElementById("root")!).render(<App />);

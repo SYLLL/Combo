@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,12 +15,43 @@ import {
 
 export default function ProductComplianceCouncil() {
   const { currentUser, signOut } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
     try {
+      setIsSigningOut(true);
+      console.log("Signing out user...");
+      
+      // Clear all browser storage first
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear all Firebase-related storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('firebase') || key.includes('auth')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.includes('firebase') || key.includes('auth')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      // Call the sign out function
       await signOut();
+      
+      // Force a complete page reload to homepage
+      console.log("Redirecting to homepage...");
+      window.location.href = '/';
     } catch (error) {
       console.error('Error signing out:', error);
+      // Even if sign out fails, force redirect
+      localStorage.clear();
+      sessionStorage.clear();
+      console.log("Redirecting to homepage after error...");
+      window.location.href = '/';
     }
   };
 
@@ -64,10 +96,20 @@ export default function ProductComplianceCouncil() {
                 variant="outline"
                 size="sm"
                 onClick={handleSignOut}
+                disabled={isSigningOut}
                 className="flex items-center space-x-2"
               >
-                <LogOut className="h-4 w-4" />
-                <span>Sign Out</span>
+                {isSigningOut ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
+                    <span>Signing Out...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogOut className="h-4 w-4" />
+                    <span>Sign Out</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

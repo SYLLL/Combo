@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,32 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { currentUser } = useAuth();
+  const navigate = useNavigate();
+  
+  // Emergency keyboard shortcut for force sign out
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Q') {
+        console.log("🚨 EMERGENCY FORCE SIGN OUT KEYBOARD SHORTCUT 🚨");
+        
+        // Set disable flag
+        localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+        localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+        
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Re-set disable flag
+        localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+        localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+        
+        window.location.replace(window.location.origin + '/?forceSignOut=' + Date.now() + '&clearCache=true');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +61,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             role: 'user'
           });
           onSuccess?.();
+          // Redirect to compliance council after successful signup
+          navigate('/compliance-council');
         } else {
           setError(result.error || 'Sign up failed');
         }
@@ -41,6 +70,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         const result = await signInUser(email, password);
         if (result.success) {
           onSuccess?.();
+          // Redirect to compliance council after successful signin
+          navigate('/compliance-council');
         } else {
           setError(result.error || 'Sign in failed');
         }
@@ -53,12 +84,81 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   };
 
   if (currentUser) {
+    const handleForceSignOut = () => {
+      console.log("🚨 FORCE SIGN OUT INITIATED 🚨");
+      
+      // Nuclear option - clear EVERYTHING and disable Firebase temporarily
+      try {
+        // Set a flag to disable Firebase auth temporarily
+        localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+        localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+        
+        // Clear all storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Re-set the disable flag after clearing
+        localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+        localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+        
+        // Clear all cookies
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        // Clear Firebase-specific storage with more patterns
+        const allKeys = [...Object.keys(localStorage), ...Object.keys(sessionStorage)];
+        allKeys.forEach(key => {
+          if (key.includes('firebase') || key.includes('auth') || key.includes('user') || key.includes('token')) {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+          }
+        });
+        
+        // Clear any remaining Firebase data
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.includes('firebase') || key.includes('auth'))) {
+            localStorage.removeItem(key);
+          }
+        }
+        
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && (key.includes('firebase') || key.includes('auth'))) {
+            sessionStorage.removeItem(key);
+          }
+        }
+        
+        // Re-set the disable flag one more time
+        localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+        localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+        
+        console.log("All storage cleared, forcing page reload...");
+        
+        // Force complete page reload with cache busting
+        window.location.replace(window.location.origin + '/?forceSignOut=' + Date.now() + '&clearCache=true');
+        
+      } catch (error) {
+        console.error("Error in force sign out:", error);
+        // Last resort - hard reload
+        window.location.reload(true);
+      }
+    };
+
     return (
       <Card className="w-full max-w-md mx-auto">
         <CardContent className="pt-6">
-          <p className="text-center text-muted-foreground">
+          <p className="text-center text-muted-foreground mb-4">
             You are already signed in as {currentUser.email}
           </p>
+          <Button 
+            onClick={handleForceSignOut}
+            variant="destructive"
+            className="w-full"
+          >
+            🚨 Force Sign Out 🚨
+          </Button>
         </CardContent>
       </Card>
     );

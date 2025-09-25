@@ -41,16 +41,81 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async () => {
     try {
-      await signOutUser();
+      console.log("Starting sign out process...");
+      
+      // Clear local state immediately
       setCurrentUser(null);
       setUserProfile(null);
+      setError(null);
+      
+      // Clear browser storage immediately
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Clear Firebase-specific storage
+      Object.keys(localStorage).forEach(key => {
+        if (key.includes('firebase') || key.includes('auth')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      Object.keys(sessionStorage).forEach(key => {
+        if (key.includes('firebase') || key.includes('auth')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+      
+      // Call Firebase sign out
+      await signOutUser();
+      
+      console.log("Sign out completed successfully");
     } catch (error) {
       console.error('Error signing out:', error);
+      
+      // Ensure state is cleared even on error
+      setCurrentUser(null);
+      setUserProfile(null);
+      setError(null);
+      localStorage.clear();
+      sessionStorage.clear();
     }
   };
 
   useEffect(() => {
+    // Check if Firebase auth is temporarily disabled
+    const isDisabled = localStorage.getItem('FORCE_DISABLE_FIREBASE_AUTH') === 'true';
+    const disableTimestamp = localStorage.getItem('FORCE_DISABLE_TIMESTAMP');
+    const now = Date.now();
+    
+    if (isDisabled && disableTimestamp) {
+      const timeDiff = now - parseInt(disableTimestamp);
+      // Disable for 30 seconds
+      if (timeDiff < 30000) {
+        console.log("🚨 Firebase auth temporarily disabled by force sign out");
+        setCurrentUser(null);
+        setUserProfile(null);
+        setError(null);
+        setLoading(false);
+        return;
+      } else {
+        // Re-enable after 30 seconds
+        localStorage.removeItem('FORCE_DISABLE_FIREBASE_AUTH');
+        localStorage.removeItem('FORCE_DISABLE_TIMESTAMP');
+      }
+    }
+    
     const unsubscribe = onAuthStateChange(async (user) => {
+      // Double-check disable flag
+      const stillDisabled = localStorage.getItem('FORCE_DISABLE_FIREBASE_AUTH') === 'true';
+      if (stillDisabled) {
+        console.log("🚨 Ignoring Firebase auth state change - disabled");
+        setCurrentUser(null);
+        setUserProfile(null);
+        setError(null);
+        setLoading(false);
+        return;
+      }
+      
       setCurrentUser(user);
       
       if (user) {
