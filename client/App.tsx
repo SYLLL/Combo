@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import jsPDF from 'jspdf';
-import { signInUser, signUpUser, createUserProfile, createProject, subscribeToUserProjects, Project } from "./lib/firebase";
+import { signInUser, signUpUser, createUserProfile, createProject, subscribeToUserProjects, Project, signOutUser } from "./lib/firebase";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { LoginForm } from "./components/LoginForm";
 import ComplianceReviewPage from "./pages/ComplianceReviewPage";
@@ -16,6 +16,7 @@ function ProductComplianceCouncil() {
   const [showNewProjectForm, setShowNewProjectForm] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [signingOut, setSigningOut] = useState(false);
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
@@ -26,13 +27,22 @@ function ProductComplianceCouncil() {
 
          // Load user projects when component mounts or user changes
          useEffect(() => {
+           // Don't load projects if signing out
+           if (signingOut) {
+             setLoading(false);
+             return;
+           }
+           
            if (currentUser) {
              setLoading(true);
              
              // Subscribe to real-time updates for user projects
              const unsubscribe = subscribeToUserProjects(currentUser.uid, (userProjects) => {
-               setProjects(userProjects);
-               setLoading(false);
+               // Don't update projects if signing out
+               if (!signingOut) {
+                 setProjects(userProjects);
+                 setLoading(false);
+               }
              });
              
              return () => {
@@ -42,7 +52,7 @@ function ProductComplianceCouncil() {
              setProjects([]);
              setLoading(false);
            }
-         }, [currentUser]);
+         }, [currentUser, signingOut]);
 
   const handleCreateProject = async () => {
     if (!currentUser) {
@@ -154,19 +164,37 @@ function ProductComplianceCouncil() {
             </div>
           </div>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => {
+              setSigningOut(true);
+              
+              // Set disable flag BEFORE clearing storage to prevent re-authentication
+              localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+              localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+              
+              // Clear all browser storage immediately
+              localStorage.clear();
+              sessionStorage.clear();
+              
+              // Re-set the disable flag after clearing (this is the key!)
+              localStorage.setItem('FORCE_DISABLE_FIREBASE_AUTH', 'true');
+              localStorage.setItem('FORCE_DISABLE_TIMESTAMP', Date.now().toString());
+              
+              // Force redirect to home page with page reload immediately
+              window.location.href = '/';
+            }}
+            disabled={signingOut}
             style={{
               padding: '12px 24px',
-              backgroundColor: '#dc2626',
+              backgroundColor: signingOut ? '#9ca3af' : '#dc2626',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
               fontSize: '16px',
               fontWeight: '500',
-              cursor: 'pointer'
+              cursor: signingOut ? 'not-allowed' : 'pointer'
             }}
           >
-            Sign Out
+            {signingOut ? 'Signing Out...' : 'Sign Out'}
           </button>
         </div>
       

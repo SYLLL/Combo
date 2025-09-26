@@ -133,7 +133,15 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
     }
   };
 
-  if (currentUser) {
+  // Check if Firebase auth is temporarily disabled (from sign out)
+  const isDisabled = localStorage.getItem('FORCE_DISABLE_FIREBASE_AUTH') === 'true';
+  const disableTimestamp = localStorage.getItem('FORCE_DISABLE_TIMESTAMP');
+  const now = Date.now();
+  
+  // If disabled and within 30 seconds, don't show "already signed in" message
+  const shouldShowSignedInMessage = currentUser && !(isDisabled && disableTimestamp && (now - parseInt(disableTimestamp) < 30000));
+
+  if (shouldShowSignedInMessage) {
     const handleForceSignOut = () => {
       console.log("🚨 FORCE SIGN OUT INITIATED 🚨");
       
