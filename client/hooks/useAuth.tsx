@@ -82,6 +82,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    // Add a timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      setLoading(false);
+    }, 5000); // 5 second timeout
+    
     // Check if Firebase auth is temporarily disabled
     const isDisabled = localStorage.getItem('FORCE_DISABLE_FIREBASE_AUTH') === 'true';
     const disableTimestamp = localStorage.getItem('FORCE_DISABLE_TIMESTAMP');
@@ -91,11 +96,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const timeDiff = now - parseInt(disableTimestamp);
       // Disable for 30 seconds
       if (timeDiff < 30000) {
-        console.log("🚨 Firebase auth temporarily disabled by force sign out");
         setCurrentUser(null);
         setUserProfile(null);
         setError(null);
         setLoading(false);
+        clearTimeout(timeoutId);
         return;
       } else {
         // Re-enable after 30 seconds
@@ -104,11 +109,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     }
     
+    // Check current auth state immediately
+    const currentUser = auth.currentUser;
+    
     const unsubscribe = onAuthStateChange(async (user) => {
+      clearTimeout(timeoutId); // Clear timeout since we got a response
+      
       // Double-check disable flag
       const stillDisabled = localStorage.getItem('FORCE_DISABLE_FIREBASE_AUTH') === 'true';
       if (stillDisabled) {
-        console.log("🚨 Ignoring Firebase auth state change - disabled");
         setCurrentUser(null);
         setUserProfile(null);
         setError(null);
@@ -124,11 +133,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           if (result.success) {
             setUserProfile(result.data as UserProfile);
           } else {
-            console.error('Failed to get user profile:', result.error);
             setError(result.error);
           }
         } catch (err) {
-          console.error('Error fetching user profile:', err);
           setError('Failed to fetch user profile');
         }
       } else {
@@ -139,7 +146,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      clearTimeout(timeoutId);
+      unsubscribe();
+    };
   }, []);
 
   const value: AuthContextType = {

@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import jsPDF from 'jspdf';
-import { signInUser, signUpUser, createUserProfile } from "./lib/firebase";
+import { signInUser, signUpUser, createUserProfile, createProject, subscribeToUserProjects, Project } from "./lib/firebase";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { LoginForm } from "./components/LoginForm";
 import ComplianceReviewPage from "./pages/ComplianceReviewPage";
@@ -12,45 +12,65 @@ import ComplianceReviewPage from "./pages/ComplianceReviewPage";
 // Product Compliance Council Page
 function ProductComplianceCouncil() {
   const navigate = useNavigate();
+  const { currentUser, loading: authLoading } = useAuth();
   const [showNewProjectForm, setShowNewProjectForm] = useState(false);
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      name: 'Feature X Compliance',
-      status: 'In Progress',
-      description: 'Compliance review for new feature implementation',
-      createdAt: '2024-01-15',
-      priority: 'High'
-    },
-    {
-      id: 2,
-      name: 'Security Review',
-      status: 'Pending',
-      description: 'Security compliance assessment for Q1',
-      createdAt: '2024-01-10',
-      priority: 'Medium'
-    }
-  ]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
-    priority: 'Medium'
+    priority: 'Medium' as 'Low' | 'Medium' | 'High'
   });
   
-  const handleCreateProject = () => {
-    if (newProject.name.trim() && newProject.description.trim()) {
-      const project = {
-        id: Date.now(),
+  // Don't redirect immediately - let the loading state handle it
+
+         // Load user projects when component mounts or user changes
+         useEffect(() => {
+           if (currentUser) {
+             setLoading(true);
+             
+             // Subscribe to real-time updates for user projects
+             const unsubscribe = subscribeToUserProjects(currentUser.uid, (userProjects) => {
+               setProjects(userProjects);
+               setLoading(false);
+             });
+             
+             return () => {
+               unsubscribe();
+             };
+           } else {
+             setProjects([]);
+             setLoading(false);
+           }
+         }, [currentUser]);
+
+  const handleCreateProject = async () => {
+    if (!currentUser) {
+      alert('Please sign in to create a project.');
+      return;
+    }
+    
+    if (!newProject.name.trim() || !newProject.description.trim()) {
+      alert('Please fill in both project name and description.');
+      return;
+    }
+
+    try {
+      const result = await createProject({
         name: newProject.name,
-        status: 'Draft',
         description: newProject.description,
-        createdAt: new Date().toISOString().split('T')[0],
-        priority: newProject.priority
-      };
-      
-      setProjects([project, ...projects]);
-      setNewProject({ name: '', description: '', priority: 'Medium' });
-      setShowNewProjectForm(false);
+        priority: newProject.priority,
+        status: 'Draft'
+      }, currentUser.uid);
+
+      if (result.success) {
+        setNewProject({ name: '', description: '', priority: 'Medium' });
+        setShowNewProjectForm(false);
+      } else {
+        alert('Failed to create project: ' + result.error);
+      }
+    } catch (error) {
+      alert('An error occurred while creating the project.');
     }
   };
   
@@ -73,17 +93,41 @@ function ProductComplianceCouncil() {
     }
   };
   
-  return (
-    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
-          Product Compliance Council
+  // Show loading while authentication is being checked
+  if (authLoading) {
+    return (
+      <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ 
+          width: '32px', 
+          height: '32px', 
+          border: '3px solid #0369a1', 
+          borderTop: '3px solid transparent', 
+          borderRadius: '50%', 
+          animation: 'spin 1s linear infinite',
+          margin: '0 auto 16px'
+        }}></div>
+        <p style={{ color: '#64748b', fontSize: '16px' }}>Checking authentication...</p>
+      </div>
+    );
+  }
+
+  // Show message if not authenticated
+  if (!authLoading && !currentUser) {
+    return (
+      <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937', marginBottom: '16px' }}>
+          Authentication Required
         </h1>
+        <p style={{ color: '#64748b', fontSize: '16px', marginBottom: '24px' }}>
+          Please sign in to access the compliance dashboard.
+        </p>
+        
+        
         <button
           onClick={() => navigate('/')}
           style={{
             padding: '12px 24px',
-            backgroundColor: '#dc2626',
+            backgroundColor: '#2563eb',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
@@ -92,9 +136,39 @@ function ProductComplianceCouncil() {
             cursor: 'pointer'
           }}
         >
-          Sign Out
+          Go to Login
         </button>
       </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+          <div>
+            <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
+              Product Compliance Council
+            </h1>
+            <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
+              Signed in as: {currentUser.email}
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              padding: '12px 24px',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontWeight: '500',
+              cursor: 'pointer'
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
       
       {/* New Project Form */}
       {showNewProjectForm && (
@@ -151,10 +225,10 @@ function ProductComplianceCouncil() {
               <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
                 Priority
               </label>
-              <select
-                value={newProject.priority}
-                onChange={(e) => setNewProject({...newProject, priority: e.target.value})}
-                style={{
+                <select
+                  value={newProject.priority}
+                  onChange={(e) => setNewProject({...newProject, priority: e.target.value as 'Low' | 'Medium' | 'High'})}
+                  style={{
                   width: '100%',
                   height: '44px',
                   padding: '0 12px',
@@ -227,8 +301,53 @@ function ProductComplianceCouncil() {
           </button>
         </div>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-          {projects.map((project) => (
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              border: '3px solid #0369a1', 
+              borderTop: '3px solid transparent', 
+              borderRadius: '50%', 
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 16px'
+            }}></div>
+            <p style={{ color: '#64748b', fontSize: '16px' }}>Loading your projects...</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '40px',
+            backgroundColor: 'white',
+            borderRadius: '12px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📋</div>
+            <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937', marginBottom: '8px' }}>
+              No projects yet
+            </h3>
+            <p style={{ color: '#6b7280', fontSize: '14px', marginBottom: '20px' }}>
+              Create your first compliance project to get started
+            </p>
+            <button
+              onClick={() => setShowNewProjectForm(true)}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: '#2563eb',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '16px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              Create Your First Project
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+            {projects.map((project) => (
             <div key={project.id} style={{
               backgroundColor: 'white',
               padding: '20px',
@@ -302,8 +421,9 @@ function ProductComplianceCouncil() {
                 </button>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* Quick Actions */}
@@ -616,6 +736,10 @@ function Index() {
   const navigate = useNavigate();
   const [forceShowLogin, setForceShowLogin] = useState(false);
   
+  console.log("Index - currentUser:", currentUser);
+  console.log("Index - loading:", loading);
+  console.log("Index - forceShowLogin:", forceShowLogin);
+  
   // Check for force sign out parameters
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -651,17 +775,45 @@ function Index() {
     return () => clearTimeout(timer);
   }, []);
   
-  // Redirect authenticated users to compliance council (unless force sign out)
+  // Redirect authenticated users to compliance council
   useEffect(() => {
-    if (!loading && currentUser && !forceShowLogin) {
+    console.log("Redirect useEffect triggered:");
+    console.log("- loading:", loading);
+    console.log("- currentUser:", currentUser);
+    console.log("- forceShowLogin:", forceShowLogin);
+    
+    if (!loading && currentUser) {
       console.log("User authenticated, redirecting to compliance council");
       navigate('/compliance-council');
+    } else {
+      console.log("Not redirecting - loading:", loading, "currentUser:", currentUser);
     }
-  }, [currentUser, loading, navigate, forceShowLogin]);
+  }, [currentUser, loading, navigate]);
   
-  // If force sign out is active, completely ignore authentication state
-  if (forceShowLogin) {
-    console.log("Force sign out active - showing login form regardless of auth state");
+  // Don't show login form if user is authenticated
+  if (!loading && currentUser) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        backgroundColor: '#e0f2fe'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            border: '3px solid #0369a1', 
+            borderTop: '3px solid transparent', 
+            borderRadius: '50%', 
+            animation: 'spin 1s linear infinite',
+            margin: '0 auto 16px'
+          }}></div>
+          <p style={{ color: '#0369a1', fontSize: '16px' }}>Redirecting...</p>
+        </div>
+      </div>
+    );
   }
   
   // Show loading only briefly, then always show login
@@ -737,8 +889,11 @@ function Index() {
           Sign up or sign in to access the compliance dashboard.
         </p>
         
+        
         {/* Firebase LoginForm component */}
-        <LoginForm />
+        <LoginForm onSuccess={() => {
+          navigate('/compliance-council');
+        }} />
       </div>
       
       <div style={{ 
@@ -770,3 +925,13 @@ const App = () => (
 );
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Add CSS for loading animation
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);

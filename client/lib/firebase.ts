@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, User } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, getDocs, query, where, orderBy, onSnapshot } from 'firebase/firestore';
 
 // Debug: Log environment variables
 console.log('Environment variables loaded:');
@@ -119,6 +119,99 @@ export const updateUserProfile = async (userId: string, updates: any) => {
 // Auth state observer
 export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+// Project management functions for user-specific projects
+export interface Project {
+  id?: string;
+  name: string;
+  description: string;
+  status: 'Draft' | 'In Progress' | 'Pending' | 'Completed';
+  priority: 'Low' | 'Medium' | 'High';
+  createdAt: string;
+  userId: string;
+}
+
+export const createProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, userId: string) => {
+  try {
+    const project: Project = {
+      ...projectData,
+      userId,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    
+    const docRef = await addDoc(collection(db, 'projects'), project);
+    return { success: true, projectId: docRef.id };
+  } catch (error: any) {
+    console.error('Error creating project:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getUserProjects = async (userId: string) => {
+  try {
+    const q = query(
+      collection(db, 'projects'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const projects: Project[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      projects.push({
+        id: doc.id,
+        ...doc.data()
+      } as Project);
+    });
+    
+    return { success: true, projects };
+  } catch (error: any) {
+    console.error('Error fetching user projects:', error);
+    return { success: false, error: error.message, projects: [] };
+  }
+};
+
+export const updateProject = async (projectId: string, updates: Partial<Project>) => {
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, updates);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating project:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const deleteProject = async (projectId: string) => {
+  try {
+    const projectRef = doc(db, 'projects', projectId);
+    await updateDoc(projectRef, { status: 'Deleted' });
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error deleting project:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const subscribeToUserProjects = (userId: string, callback: (projects: Project[]) => void) => {
+  const q = query(
+    collection(db, 'projects'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+  
+  return onSnapshot(q, (querySnapshot) => {
+    const projects: Project[] = [];
+    querySnapshot.forEach((doc) => {
+      projects.push({
+        id: doc.id,
+        ...doc.data()
+      } as Project);
+    });
+    callback(projects);
+  });
 };
 
 export default app;

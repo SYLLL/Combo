@@ -21,7 +21,6 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
-  console.log('LoginForm rendered - currentUser:', currentUser);
   
   // Emergency keyboard shortcut for force sign out
   useEffect(() => {
@@ -104,16 +103,24 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           setSignUpSuccess(false);
           setError('');
         }, 2000);
-      } else {
-        const result = await signInUser(email, password);
-        if (result.success) {
-          onSuccess?.();
-          // Redirect to compliance council after successful signin
-          navigate('/compliance-council');
-        } else {
-          setError(result.error || 'Sign in failed');
-        }
-      }
+             } else {
+               const result = await signInUser(email, password);
+               
+               if (result.success) {
+                 // Clear any stuck authentication flags to ensure proper state sync
+                 localStorage.removeItem('FORCE_DISABLE_FIREBASE_AUTH');
+                 localStorage.removeItem('FORCE_DISABLE_TIMESTAMP');
+                 
+                 // Call success callback
+                 onSuccess?.();
+                 
+                 // Force a page reload to ensure authentication state is properly synced
+                 // This prevents the "Authentication Required" issue
+                 window.location.href = '/compliance-council';
+               } else {
+                 setError(result.error || 'Sign in failed');
+               }
+             }
     } catch (err: any) {
       console.error("Sign up error:", err);
       if (err.message === 'Sign up process timeout') {
