@@ -66,6 +66,14 @@ export default function ComplianceReviewPage() {
   const [figmaAnalysis, setFigmaAnalysis] = useState(null);
   const [isAnalyzingFigma, setIsAnalyzingFigma] = useState(false);
   const [complianceAnalysis, setComplianceAnalysis] = useState(null);
+  const [dataFlowAnalysis, setDataFlowAnalysis] = useState(null);
+  const [isAnalyzingDataFlow, setIsAnalyzingDataFlow] = useState(false);
+  const [editableSchema, setEditableSchema] = useState(`{
+  "email": {
+    "type": "string",
+    "format": "email"
+  }
+}`);
 
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
@@ -1030,6 +1038,285 @@ export default function ComplianceReviewPage() {
     }
   };
 
+  const handleAnalyzeDataFlow = async () => {
+    setIsAnalyzingDataFlow(true);
+    
+    try {
+      // Parse the editable schema
+      let parsedSchema;
+      try {
+        parsedSchema = JSON.parse(editableSchema);
+      } catch (error) {
+        console.error('Invalid JSON schema:', error);
+        parsedSchema = { email: { type: "string", format: "email" } };
+      }
+
+      // Collect all available data for analysis
+      const analysisData = {
+        productDescription,
+        schemaData: parsedSchema,
+        legalReview,
+        githubSearchResults,
+        codeSnippets,
+        figmaAnalysis,
+        complianceAnalysis,
+        uploadedFile: uploadedFile ? {
+          name: uploadedFile.name,
+          size: uploadedFile.size,
+          type: uploadedFile.type
+        } : null
+      };
+
+      // Send data to server for analysis
+      const response = await fetch('/api/analyze-data-flow', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(analysisData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setDataFlowAnalysis(result);
+        console.log('Data flow analysis completed:', result);
+      } else {
+        const errorData = await response.json().catch(() => ({ message: 'Analysis failed' }));
+        console.error('Data flow analysis failed:', errorData);
+        // Fallback to client-side analysis
+        const fallbackAnalysis = generateDataFlowAnalysis(analysisData);
+        setDataFlowAnalysis(fallbackAnalysis);
+      }
+    } catch (error) {
+      console.error('Error analyzing data flow:', error);
+      // Fallback to client-side analysis
+      let parsedSchema;
+      try {
+        parsedSchema = JSON.parse(editableSchema);
+      } catch (error) {
+        console.error('Invalid JSON schema:', error);
+        parsedSchema = { email: { type: "string", format: "email" } };
+      }
+
+      const analysisData = {
+        productDescription,
+        schemaData: parsedSchema,
+        legalReview,
+        githubSearchResults,
+        codeSnippets,
+        figmaAnalysis,
+        complianceAnalysis,
+        uploadedFile: uploadedFile ? {
+          name: uploadedFile.name,
+          size: uploadedFile.size,
+          type: uploadedFile.type
+        } : null
+      };
+      const fallbackAnalysis = generateDataFlowAnalysis(analysisData);
+      setDataFlowAnalysis(fallbackAnalysis);
+    } finally {
+      setIsAnalyzingDataFlow(false);
+    }
+  };
+
+  const generateDataFlowAnalysis = (data: any) => {
+    // Generate data flow analysis based on available data
+    const dataFlow = {
+      nodes: [],
+      edges: [],
+      privacyImplications: [],
+      complianceRisks: [],
+      recommendations: []
+    };
+
+    // Add user input node
+    dataFlow.nodes.push({
+      id: 'user-input',
+      label: 'User Input',
+      type: 'source',
+      dataTypes: ['email', 'profile_data', 'preferences']
+    });
+
+    // Add authentication node
+    dataFlow.nodes.push({
+      id: 'auth',
+      label: 'Authentication System',
+      type: 'process',
+      dataTypes: ['credentials', 'session_tokens']
+    });
+
+    // Add main application node
+    dataFlow.nodes.push({
+      id: 'app',
+      label: 'Main Application',
+      type: 'process',
+      dataTypes: ['user_data', 'application_state']
+    });
+
+    // Add storage node
+    dataFlow.nodes.push({
+      id: 'storage',
+      label: 'Data Storage',
+      type: 'storage',
+      dataTypes: ['persistent_data', 'user_profiles']
+    });
+
+    // Add third-party integrations
+    if (data.githubSearchResults || data.codeSnippets) {
+      dataFlow.nodes.push({
+        id: 'github',
+        label: 'GitHub API',
+        type: 'external',
+        dataTypes: ['code_data', 'repository_info']
+      });
+    }
+
+    if (data.figmaAnalysis) {
+      dataFlow.nodes.push({
+        id: 'figma',
+        label: 'Figma API',
+        type: 'external',
+        dataTypes: ['design_data', 'component_info']
+      });
+    }
+
+    // Add edges
+    dataFlow.edges.push({
+      from: 'user-input',
+      to: 'auth',
+      label: 'User credentials',
+      dataTypes: ['email', 'password']
+    });
+
+    dataFlow.edges.push({
+      from: 'auth',
+      to: 'app',
+      label: 'Authenticated session',
+      dataTypes: ['session_token', 'user_id']
+    });
+
+    dataFlow.edges.push({
+      from: 'app',
+      to: 'storage',
+      label: 'User data persistence',
+      dataTypes: ['profile_data', 'preferences']
+    });
+
+    if (data.githubSearchResults || data.codeSnippets) {
+      dataFlow.edges.push({
+        from: 'app',
+        to: 'github',
+        label: 'Code analysis',
+        dataTypes: ['repository_url', 'code_snippets']
+      });
+    }
+
+    if (data.figmaAnalysis) {
+      dataFlow.edges.push({
+        from: 'app',
+        to: 'figma',
+        label: 'Design analysis',
+        dataTypes: ['figma_url', 'design_components']
+      });
+    }
+
+    // Analyze privacy implications
+    if (data.schemaData?.email) {
+      dataFlow.privacyImplications.push({
+        type: 'PII Collection',
+        severity: 'high',
+        description: 'Email addresses are collected and stored',
+        regulation: 'GDPR, CCPA, COPPA'
+      });
+    }
+
+    // Analyze other fields in the schema
+    if (data.schemaData && typeof data.schemaData === 'object') {
+      Object.keys(data.schemaData).forEach(fieldName => {
+        if (fieldName !== 'email' && data.schemaData[fieldName]) {
+          const field = data.schemaData[fieldName];
+          if (field.type === 'string' && (field.format === 'email' || fieldName.toLowerCase().includes('email'))) {
+            dataFlow.privacyImplications.push({
+              type: 'PII Collection',
+              severity: 'high',
+              description: `${fieldName} field contains email addresses`,
+              regulation: 'GDPR, CCPA, COPPA'
+            });
+          } else if (fieldName.toLowerCase().includes('phone') || fieldName.toLowerCase().includes('address')) {
+            dataFlow.privacyImplications.push({
+              type: 'PII Collection',
+              severity: 'medium',
+              description: `${fieldName} field may contain personal information`,
+              regulation: 'GDPR, CCPA'
+            });
+          }
+        }
+      });
+    }
+
+    if (data.legalReview?.facts?.some((fact: string) => fact.includes('email'))) {
+      dataFlow.privacyImplications.push({
+        type: 'Data Processing',
+        severity: 'medium',
+        description: 'Email data is processed for feature functionality',
+        regulation: 'GDPR Article 6'
+      });
+    }
+
+    // Analyze compliance risks
+    if (data.complianceAnalysis?.coppa) {
+      dataFlow.complianceRisks.push({
+        type: 'COPPA Compliance',
+        severity: 'high',
+        description: 'Age verification required for users under 13',
+        mitigation: 'Implement age-gating mechanism'
+      });
+    }
+
+    if (data.complianceAnalysis?.gdpr) {
+      dataFlow.complianceRisks.push({
+        type: 'GDPR Compliance',
+        severity: 'high',
+        description: 'Data subject rights and consent management required',
+        mitigation: 'Implement consent management system'
+      });
+    }
+
+    // Generate recommendations
+    dataFlow.recommendations.push({
+      type: 'Data Minimization',
+      priority: 'high',
+      description: 'Only collect necessary data for core functionality',
+      implementation: 'Review data collection points and remove unnecessary fields'
+    });
+
+    dataFlow.recommendations.push({
+      type: 'Encryption',
+      priority: 'high',
+      description: 'Encrypt sensitive data in transit and at rest',
+      implementation: 'Implement TLS for data transmission and AES-256 for storage'
+    });
+
+    dataFlow.recommendations.push({
+      type: 'Access Controls',
+      priority: 'medium',
+      description: 'Implement proper access controls for data access',
+      implementation: 'Use role-based access control (RBAC) and audit logging'
+    });
+
+    return {
+      success: true,
+      dataFlow,
+      summary: {
+        totalNodes: dataFlow.nodes.length,
+        totalEdges: dataFlow.edges.length,
+        privacyImplications: dataFlow.privacyImplications.length,
+        complianceRisks: dataFlow.complianceRisks.length,
+        recommendations: dataFlow.recommendations.length
+      }
+    };
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -1313,14 +1600,14 @@ export default function ComplianceReviewPage() {
             </CardContent>
           </Card>
 
-          {/* Eugene's API Schema Section */}
+          {/* API Schema Section */}
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="h-5 w-5 bg-primary rounded text-primary-foreground text-xs flex items-center justify-center font-bold">
-                  E
+                  A
                 </div>
-                Eugene's API Schema
+                API Schema
               </CardTitle>
               <Badge variant="secondary" className="w-fit">
                 Potential compliance issue submitted
@@ -1329,16 +1616,17 @@ export default function ComplianceReviewPage() {
             <CardContent className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-foreground mb-2">
-                  Json
+                  JSON Schema
                 </h3>
-                <div className="bg-muted rounded-md p-3 font-mono text-sm">
-                  <pre className="text-foreground whitespace-pre-wrap">
-                    {`"email": {
-  "type": "string",
-  "format": "email"
-}`}
-                  </pre>
-                </div>
+                <Textarea
+                  value={editableSchema}
+                  onChange={(e) => setEditableSchema(e.target.value)}
+                  className="bg-muted font-mono text-sm min-h-[120px] resize-none"
+                  placeholder="Enter your API schema JSON here..."
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Edit the JSON schema above to define your API structure
+                </p>
               </div>
 
               <div>
@@ -1740,11 +2028,163 @@ export default function ComplianceReviewPage() {
               <Button 
                 variant="outline" 
                 className="w-full"
+                onClick={handleAnalyzeDataFlow}
+                disabled={isAnalyzingDataFlow}
               >
-                Analyze Data Flow
+                {isAnalyzingDataFlow ? 'Analyzing...' : 'Analyze Data Flow'}
               </Button>
             </CardContent>
           </Card>
+
+          {/* Data Flow Analysis Results */}
+          {dataFlowAnalysis && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-5 w-5 bg-blue-500 rounded text-white text-xs flex items-center justify-center font-bold">
+                    📊
+                  </div>
+                  Data Flow Analysis Results
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Generated data flow diagram and compliance analysis
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{dataFlowAnalysis.summary?.totalNodes || 0}</div>
+                    <div className="text-sm text-blue-600">Data Nodes</div>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{dataFlowAnalysis.summary?.totalEdges || 0}</div>
+                    <div className="text-sm text-green-600">Data Flows</div>
+                  </div>
+                  <div className="bg-yellow-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-yellow-600">{dataFlowAnalysis.summary?.privacyImplications || 0}</div>
+                    <div className="text-sm text-yellow-600">Privacy Issues</div>
+                  </div>
+                  <div className="bg-red-50 p-4 rounded-lg">
+                    <div className="text-2xl font-bold text-red-600">{dataFlowAnalysis.summary?.complianceRisks || 0}</div>
+                    <div className="text-sm text-red-600">Compliance Risks</div>
+                  </div>
+                </div>
+
+                {/* Data Flow Diagram */}
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <h3 className="text-lg font-semibold mb-4">Data Flow Diagram</h3>
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    {dataFlowAnalysis.dataFlow?.nodes?.map((node: any) => (
+                      <div
+                        key={node.id}
+                        className={`p-4 rounded-lg border-2 min-w-[120px] text-center ${
+                          node.type === 'source' ? 'bg-green-100 border-green-300' :
+                          node.type === 'process' ? 'bg-blue-100 border-blue-300' :
+                          node.type === 'storage' ? 'bg-purple-100 border-purple-300' :
+                          'bg-orange-100 border-orange-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-sm">{node.label}</div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          {node.dataTypes?.join(', ')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* Flow arrows */}
+                  <div className="flex justify-center mt-4">
+                    <div className="flex items-center space-x-2">
+                      {dataFlowAnalysis.dataFlow?.edges?.map((edge: any, index: number) => (
+                        <div key={index} className="flex items-center">
+                          <div className="text-xs bg-white px-2 py-1 rounded border">
+                            {edge.label}
+                          </div>
+                          <div className="mx-2 text-gray-400">→</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Privacy Implications */}
+                {dataFlowAnalysis.dataFlow?.privacyImplications?.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Privacy Implications</h3>
+                    <div className="space-y-2">
+                      {dataFlowAnalysis.dataFlow.privacyImplications.map((implication: any, index: number) => (
+                        <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-yellow-800">{implication.type}</span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              implication.severity === 'high' ? 'bg-red-100 text-red-800' :
+                              implication.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {implication.severity}
+                            </span>
+                          </div>
+                          <p className="text-sm text-yellow-700 mt-1">{implication.description}</p>
+                          <p className="text-xs text-yellow-600 mt-1">Regulation: {implication.regulation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Compliance Risks */}
+                {dataFlowAnalysis.dataFlow?.complianceRisks?.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Compliance Risks</h3>
+                    <div className="space-y-2">
+                      {dataFlowAnalysis.dataFlow.complianceRisks.map((risk: any, index: number) => (
+                        <div key={index} className="bg-red-50 p-3 rounded-lg border border-red-200">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-red-800">{risk.type}</span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              risk.severity === 'high' ? 'bg-red-100 text-red-800' :
+                              risk.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {risk.severity}
+                            </span>
+                          </div>
+                          <p className="text-sm text-red-700 mt-1">{risk.description}</p>
+                          <p className="text-xs text-red-600 mt-1">Mitigation: {risk.mitigation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recommendations */}
+                {dataFlowAnalysis.dataFlow?.recommendations?.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-3">Recommendations</h3>
+                    <div className="space-y-2">
+                      {dataFlowAnalysis.dataFlow.recommendations.map((rec: any, index: number) => (
+                        <div key={index} className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-blue-800">{rec.type}</span>
+                            <span className={`px-2 py-1 rounded text-xs ${
+                              rec.priority === 'high' ? 'bg-red-100 text-red-800' :
+                              rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {rec.priority}
+                            </span>
+                          </div>
+                          <p className="text-sm text-blue-700 mt-1">{rec.description}</p>
+                          <p className="text-xs text-blue-600 mt-1">Implementation: {rec.implementation}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
