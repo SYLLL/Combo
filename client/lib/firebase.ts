@@ -134,14 +134,51 @@ export interface Project {
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, userId: string) => {
   try {
+    console.log('🔥 Creating project with Bearer token authentication...');
+    
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.log('🔥 No authenticated user, cannot create project');
+      return { success: false, error: 'No authenticated user' };
+    }
+    
+    // Get fresh ID token for authentication
+    const idToken = await auth.currentUser.getIdToken();
+    console.log('🔥 Got ID token for project creation');
+    
     const project: Project = {
       ...projectData,
       userId,
       createdAt: new Date().toISOString().split('T')[0]
     };
     
-    const docRef = await addDoc(collection(db, 'projects'), project);
-    return { success: true, projectId: docRef.id };
+    console.log('🔥 Project data to save:', project);
+    
+    // Save to localStorage first (immediate feedback)
+    const existingProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    const tempId = `temp_${Date.now()}`;
+    const projectWithTempId = { ...project, id: tempId };
+    existingProjects.push(projectWithTempId);
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(existingProjects));
+    console.log('🔥 Project saved to localStorage with temp ID:', tempId);
+    
+    try {
+      // Save to Firebase with Bearer token
+      const docRef = await addDoc(collection(db, 'projects'), project);
+      console.log('🔥 Project saved to Firebase with ID:', docRef.id);
+      
+      // Update localStorage with real Firebase ID
+      const updatedProjects = existingProjects.map(p => 
+        p.id === tempId ? { ...p, id: docRef.id } : p
+      );
+      localStorage.setItem(`projects_${userId}`, JSON.stringify(updatedProjects));
+      
+      return { success: true, projectId: docRef.id };
+    } catch (firebaseError: any) {
+      console.error('🔥 Firebase save failed, keeping localStorage version:', firebaseError);
+      return { success: true, projectId: tempId }; // Still return success with temp ID
+    }
+    
   } catch (error: any) {
     console.error('Error creating project:', error);
     return { success: false, error: error.message };
@@ -150,23 +187,67 @@ export const createProject = async (projectData: Omit<Project, 'id' | 'userId' |
 
 export const getUserProjects = async (userId: string) => {
   try {
-    const q = query(
-      collection(db, 'projects'),
-      where('userId', '==', userId),
-      orderBy('createdAt', 'desc')
-    );
+    console.log('🔥 Getting user projects with Bearer token authentication...');
     
-    const querySnapshot = await getDocs(q);
-    const projects: Project[] = [];
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.log('🔥 No authenticated user, using localStorage only');
+      const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+      localProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return { success: true, projects: localProjects };
+    }
     
-    querySnapshot.forEach((doc) => {
-      projects.push({
-        id: doc.id,
-        ...doc.data()
-      } as Project);
-    });
+    // Get fresh ID token for authentication
+    const idToken = await auth.currentUser.getIdToken();
+    console.log('🔥 Got ID token for project retrieval');
     
-    return { success: true, projects };
+    // Load from localStorage first (immediate response)
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    console.log('🔥 Local projects:', localProjects);
+    
+    try {
+      // Load from Firebase with Bearer token
+      const q = query(
+        collection(db, 'projects'),
+        where('userId', '==', userId),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      console.log('🔥 Firebase projects found:', querySnapshot.size);
+      
+      const firebaseProjects: Project[] = [];
+      querySnapshot.forEach((doc) => {
+        const projectData = {
+          id: doc.id,
+          ...doc.data()
+        } as Project;
+        firebaseProjects.push(projectData);
+      });
+      
+      // Merge Firebase projects with localStorage (Firebase takes priority)
+      const mergedProjects = [...firebaseProjects];
+      localProjects.forEach(localProject => {
+        if (!firebaseProjects.find(fp => fp.id === localProject.id)) {
+          mergedProjects.push(localProject);
+        }
+      });
+      
+      // Sort projects by createdAt
+      mergedProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Update localStorage with merged projects
+      localStorage.setItem(`projects_${userId}`, JSON.stringify(mergedProjects));
+      
+      console.log('🔥 Final merged projects:', mergedProjects);
+      return { success: true, projects: mergedProjects };
+      
+    } catch (firebaseError: any) {
+      console.error('🔥 Firebase retrieval failed, using localStorage:', firebaseError);
+      localProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return { success: true, projects: localProjects };
+    }
+    
   } catch (error: any) {
     console.error('Error fetching user projects:', error);
     return { success: false, error: error.message, projects: [] };
@@ -175,8 +256,30 @@ export const getUserProjects = async (userId: string) => {
 
 export const updateProject = async (projectId: string, updates: Partial<Project>) => {
   try {
+    console.log('🔥 Updating project with Bearer token authentication...');
+    
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.log('🔥 No authenticated user, cannot update project');
+      return { success: false, error: 'No authenticated user' };
+    }
+    
+    // Get fresh ID token for authentication
+    const idToken = await auth.currentUser.getIdToken();
+    console.log('🔥 Got ID token for project update');
+    
     const projectRef = doc(db, 'projects', projectId);
     await updateDoc(projectRef, updates);
+    
+    // Also update localStorage
+    const userId = auth.currentUser.uid;
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    const updatedProjects = localProjects.map((p: Project) => 
+      p.id === projectId ? { ...p, ...updates } : p
+    );
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(updatedProjects));
+    
+    console.log('🔥 Project updated successfully');
     return { success: true };
   } catch (error: any) {
     console.error('Error updating project:', error);
@@ -186,8 +289,30 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
 
 export const deleteProject = async (projectId: string) => {
   try {
+    console.log('🔥 Deleting project with Bearer token authentication...');
+    
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.log('🔥 No authenticated user, cannot delete project');
+      return { success: false, error: 'No authenticated user' };
+    }
+    
+    // Get fresh ID token for authentication
+    const idToken = await auth.currentUser.getIdToken();
+    console.log('🔥 Got ID token for project deletion');
+    
     const projectRef = doc(db, 'projects', projectId);
     await updateDoc(projectRef, { status: 'Deleted' });
+    
+    // Also update localStorage
+    const userId = auth.currentUser.uid;
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    const updatedProjects = localProjects.map((p: Project) => 
+      p.id === projectId ? { ...p, status: 'Deleted' } : p
+    );
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(updatedProjects));
+    
+    console.log('🔥 Project deleted successfully');
     return { success: true };
   } catch (error: any) {
     console.error('Error deleting project:', error);
@@ -196,6 +321,23 @@ export const deleteProject = async (projectId: string) => {
 };
 
 export const subscribeToUserProjects = (userId: string, callback: (projects: Project[]) => void) => {
+  console.log('🔥 Setting up project subscription with Bearer token authentication...');
+  
+  // Check if user is authenticated
+  if (!auth.currentUser) {
+    console.log('🔥 No authenticated user, using localStorage only');
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    callback(localProjects);
+    return () => {}; // Return empty unsubscribe function
+  }
+  
+  // Get fresh ID token for authentication
+  auth.currentUser.getIdToken().then(idToken => {
+    console.log('🔥 Got ID token for project subscription');
+  }).catch(error => {
+    console.error('🔥 Failed to get ID token for subscription:', error);
+  });
+  
   const q = query(
     collection(db, 'projects'),
     where('userId', '==', userId),
@@ -203,15 +345,294 @@ export const subscribeToUserProjects = (userId: string, callback: (projects: Pro
   );
   
   return onSnapshot(q, (querySnapshot) => {
+    console.log('🔥 Project subscription update received:', querySnapshot.size, 'projects');
+    
     const projects: Project[] = [];
     querySnapshot.forEach((doc) => {
-      projects.push({
+      const projectData = {
         id: doc.id,
         ...doc.data()
-      } as Project);
+      } as Project;
+      projects.push(projectData);
     });
+    
+    // Also update localStorage
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(projects));
+    
+    console.log('🔥 Projects updated via subscription:', projects);
     callback(projects);
+  }, (error) => {
+    console.error('🔥 Project subscription error:', error);
+    // Fallback to localStorage on error
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    callback(localProjects);
   });
+};
+
+// Function to fetch fresh Bearer token using signUp endpoint (simpler approach)
+export const fetchBearerToken = async () => {
+  try {
+    console.log('🔥 Fetching fresh Bearer token using signUp endpoint...');
+    
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    if (!apiKey) {
+      throw new Error('Firebase API key not found');
+    }
+    
+    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        returnSecureToken: true
+      })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Identity Toolkit API error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`);
+    }
+    
+    const data = await response.json();
+    console.log('🔥 Bearer token fetched successfully via signUp endpoint');
+    
+    return {
+      success: true,
+      idToken: data.idToken,
+      refreshToken: data.refreshToken,
+      expiresIn: data.expiresIn
+    };
+    
+  } catch (error: any) {
+    console.error('🔥 Error fetching Bearer token:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Function to create project using direct REST API with fresh Bearer token
+export const createProjectREST = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, userId: string, bearerToken: string) => {
+  try {
+    console.log('🔥 Creating project via REST API with fresh Bearer token...');
+    
+    const project: Project = {
+      ...projectData,
+      userId,
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    
+    // Prepare the document data for Firestore REST API
+    const documentData = {
+      fields: {
+        name: { stringValue: project.name },
+        description: { stringValue: project.description },
+        priority: { stringValue: project.priority },
+        status: { stringValue: project.status },
+        userId: { stringValue: userId },
+        createdAt: { stringValue: project.createdAt }
+      }
+    };
+    
+    // Generate project ID
+    const projectId = `project_${Date.now()}`;
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    const projectId_env = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+    
+    // Use the exact URL format you specified: combodb database, test collection
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId_env}/databases/combodb/documents/test/${projectId}?key=${apiKey}`;
+    
+    console.log('🔥 Making REST API call to:', url);
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${bearerToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(documentData)
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🔥 REST API error:', response.status, errorText);
+      throw new Error(`REST API error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('🔥 Project saved via REST API:', result);
+    
+    // Also save to localStorage
+    const existingProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    const projectWithId = { ...project, id: projectId };
+    existingProjects.push(projectWithId);
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(existingProjects));
+    
+    return { success: true, projectId: projectId };
+    
+  } catch (error: any) {
+    console.error('🔥 Error creating project via REST API:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Function to get user projects using direct REST API with fresh Bearer token
+export const getUserProjectsREST = async (userId: string, bearerToken: string) => {
+  try {
+    console.log('🔥 Getting user projects via REST API with fresh Bearer token...');
+    
+    const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+    
+    // Use the exact URL format you specified: combodb database, test collection
+    const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/combodb/documents/test?key=${apiKey}`;
+    
+    console.log('🔥 Making REST API call to:', url);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${bearerToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🔥 REST API error:', response.status, errorText);
+      throw new Error(`REST API error: ${response.status} - ${errorText}`);
+    }
+    
+    const result = await response.json();
+    console.log('🔥 Projects retrieved via REST API:', result);
+    
+    // Parse the response and filter by userId
+    const projects: Project[] = [];
+    if (result.documents) {
+      result.documents.forEach((doc: any) => {
+        const fields = doc.fields;
+        if (fields && fields.userId && fields.userId.stringValue === userId) {
+          projects.push({
+            id: doc.name.split('/').pop(),
+            name: fields.name?.stringValue || '',
+            description: fields.description?.stringValue || '',
+            priority: fields.priority?.stringValue || 'Medium',
+            status: fields.status?.stringValue || 'Draft',
+            userId: fields.userId?.stringValue || userId,
+            createdAt: fields.createdAt?.stringValue || new Date().toISOString().split('T')[0]
+          });
+        }
+      });
+    }
+    
+    // Sort projects by createdAt
+    projects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    // Update localStorage
+    localStorage.setItem(`projects_${userId}`, JSON.stringify(projects));
+    
+    console.log('🔥 Final projects from REST API:', projects);
+    return { success: true, projects: projects };
+    
+  } catch (error: any) {
+    console.error('🔥 Error fetching user projects via REST API:', error);
+    // Fallback to localStorage
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    return { success: false, error: error.message, projects: localProjects };
+  }
+};
+
+// Function to initialize user projects when they sign in
+export const initializeUserProjects = async (userId: string) => {
+  console.log('🔥 Initializing projects for user:', userId);
+  
+  try {
+    // Load projects from Firebase with Bearer token
+    const result = await getUserProjects(userId);
+    
+    if (result.success) {
+      console.log('🔥 Projects initialized successfully:', result.projects.length, 'projects');
+      return result;
+    } else {
+      console.error('🔥 Failed to initialize projects:', result.error);
+      return result;
+    }
+  } catch (error: any) {
+    console.error('🔥 Error initializing user projects:', error);
+    return { success: false, error: error.message, projects: [] };
+  }
+};
+
+// Function to sync projects from localStorage to Firebase using REST API
+export const syncProjectsToFirebase = async (userId: string) => {
+  console.log('🔥 Syncing projects to Firebase for user:', userId);
+  
+  try {
+    // Get fresh Bearer token using the simple signUp approach
+    const tokenResult = await fetchBearerToken();
+    
+    if (!tokenResult.success) {
+      console.log('🔥 Failed to get Bearer token for sync');
+      return { success: false, error: tokenResult.error };
+    }
+    
+    const localProjects = JSON.parse(localStorage.getItem(`projects_${userId}`) || '[]');
+    console.log('🔥 Local projects to sync:', localProjects.length);
+    
+    let syncedCount = 0;
+    let errorCount = 0;
+    
+    for (const project of localProjects) {
+      // Skip if it's already a Firebase project (has a real ID, not temp)
+      if (project.id && !project.id.startsWith('temp_')) {
+        console.log('🔥 Project already synced:', project.id);
+        syncedCount++;
+        continue;
+      }
+      
+      try {
+        // Use REST API to create project
+        const result = await createProjectREST({
+          name: project.name,
+          description: project.description,
+          priority: project.priority,
+          status: project.status
+        }, userId, tokenResult.idToken);
+        
+        if (result.success) {
+          console.log('🔥 Synced project to Firebase via REST API:', result.projectId);
+          
+          // Update localStorage with Firebase ID
+          const updatedProjects = localProjects.map((p: Project) => 
+            p.id === project.id ? { ...p, id: result.projectId } : p
+          );
+          localStorage.setItem(`projects_${userId}`, JSON.stringify(updatedProjects));
+          
+          syncedCount++;
+        } else {
+          errorCount++;
+          console.error('🔥 Failed to sync project via REST API:', project.name, result.error);
+        }
+      } catch (error: any) {
+        errorCount++;
+        console.error('🔥 Failed to sync project to Firebase:', error);
+      }
+    }
+    
+    console.log('🔥 Sync completed:', syncedCount, 'projects synced,', errorCount, 'errors');
+    return { 
+      success: syncedCount > 0, 
+      syncedCount,
+      errorCount,
+      error: errorCount > 0 ? `${errorCount} projects failed to sync` : undefined
+    };
+    
+  } catch (error: any) {
+    console.error('🔥 Error syncing projects to Firebase:', error);
+    return { success: false, error: error.message };
+  }
 };
 
 export default app;

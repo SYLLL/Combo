@@ -4,7 +4,8 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import jsPDF from 'jspdf';
-import { signInUser, signUpUser, createUserProfile, createProject, subscribeToUserProjects, Project, signOutUser } from "./lib/firebase";
+import { signInUser, signUpUser, createUserProfile, createProject, getUserProjects, Project, signOutUser, initializeUserProjects, syncProjectsToFirebase, subscribeToUserProjects, fetchBearerToken, createProjectREST, getUserProjectsREST, db } from "./lib/firebase";
+// Removed Firebase SDK imports to prevent WebSocket connections
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { LoginForm } from "./components/LoginForm";
 import ComplianceReviewPage from "./pages/ComplianceReviewPage";
@@ -13,6 +14,7 @@ import ComplianceReviewPage from "./pages/ComplianceReviewPage";
 function ProductComplianceCouncil() {
   const navigate = useNavigate();
   const { currentUser, loading: authLoading } = useAuth();
+  
   const [showNewProjectForm, setShowNewProjectForm] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,8 +27,10 @@ function ProductComplianceCouncil() {
   
   // Don't redirect immediately - let the loading state handle it
 
+
          // Load user projects when component mounts or user changes
          useEffect(() => {
+           
            // Don't load projects if signing out
            if (signingOut) {
              setLoading(false);
@@ -36,19 +40,69 @@ function ProductComplianceCouncil() {
            if (currentUser) {
              setLoading(true);
              
-             // Subscribe to real-time updates for user projects
-             const unsubscribe = subscribeToUserProjects(currentUser.uid, (userProjects) => {
-               // Don't update projects if signing out
-               if (!signingOut) {
-                 setProjects(userProjects);
+             // Initialize user projects with fresh Bearer token authentication
+             const loadProjects = async () => {
+               try {
+                 // console.log('🔥 Starting loadProjects function with fresh Bearer token');
+                 
+                 // Get fresh Bearer token using the simple signUp approach
+                 // console.log('🔥 Fetching fresh Bearer token for project loading...');
+                 const tokenResult = await fetchBearerToken();
+                 
+                 if (tokenResult.success) {
+                   // console.log('🔥 Using REST API with fresh Bearer token for project loading...');
+                   const result = await getUserProjectsREST(currentUser.uid, tokenResult.idToken);
+                   
+                   if (result.success) {
+                     setProjects(result.projects);
+                     setLoading(false);
+                     // console.log('🔥 Set projects from REST API:', result.projects);
+                     return;
+                   } else {
+                     // console.log('🔥 REST API failed, trying SDK fallback...');
+                   }
+                 } else {
+                   // console.log('🔥 Failed to get Bearer token, trying SDK fallback...');
+                 }
+
+                 // Fallback to SDK method
+                 const result = await initializeUserProjects(currentUser.uid);
+                 // console.log('🔥 Project initialization result:', result);
+                 
+                 if (result.success) {
+                   setProjects(result.projects);
+                   setLoading(false);
+                   // console.log('🔥 Set projects from Firebase SDK:', result.projects);
+                 } else {
+                   // Fallback to localStorage if Firebase fails
+                   const localProjects = JSON.parse(localStorage.getItem(`projects_${currentUser.uid}`) || '[]');
+                   if (localProjects.length > 0) {
+                     setProjects(localProjects);
+                     setLoading(false);
+                     // console.log('🔥 Set projects from localStorage fallback:', localProjects);
+                   } else {
+                     setProjects([]);
+                     setLoading(false);
+                     // console.log('🔥 No projects found');
+                   }
+                 }
+               } catch (error: any) {
+                 // console.error('🔥 Error loading projects in useEffect:', error);
                  setLoading(false);
+                 // Fallback to localStorage if Firebase fails
+                 const localProjects = JSON.parse(localStorage.getItem(`projects_${currentUser.uid}`) || '[]');
+                 if (localProjects.length > 0) {
+                   setProjects(localProjects);
+                   // console.log('🔥 Set projects from localStorage fallback due to error:', localProjects);
+                 } else {
+                   setProjects([]);
+                 }
                }
-             });
-             
-             return () => {
-               unsubscribe();
              };
+             
+             loadProjects();
            } else {
+             // console.log('🔥 No current user, clearing projects');
              setProjects([]);
              setLoading(false);
            }
@@ -65,7 +119,45 @@ function ProductComplianceCouncil() {
       return;
     }
 
+    // console.log('🔥 Creating project for user:', currentUser.uid, currentUser.email);
+    // console.log('🔥 Project data:', newProject);
+
     try {
+      // Get fresh Bearer token using the simple signUp approach
+      // console.log('🔥 Fetching fresh Bearer token using signUp endpoint...');
+      const tokenResult = await fetchBearerToken();
+      
+      if (tokenResult.success) {
+        // console.log('🔥 Using REST API with fresh Bearer token...');
+        // Use REST API with fresh Bearer token
+        const result = await createProjectREST({
+          name: newProject.name,
+          description: newProject.description,
+          priority: newProject.priority,
+          status: 'Draft'
+        }, currentUser.uid, tokenResult.idToken);
+
+        // console.log('🔥 Project creation result:', result);
+
+        if (result.success) {
+          setNewProject({ name: '', description: '', priority: 'Medium' });
+          setShowNewProjectForm(false);
+          // console.log('🔥 Project created successfully via REST API, ID:', result.projectId);
+          
+          // Show success message
+          alert('Project created successfully via REST API! Check console for details.');
+          
+          // Refresh projects list
+          await handleForceRefreshProjects();
+          return;
+        } else {
+          // console.log('🔥 REST API failed, trying SDK fallback...');
+        }
+      } else {
+        // console.log('🔥 Failed to get Bearer token, trying SDK fallback...');
+      }
+
+      // Fallback to SDK method
       const result = await createProject({
         name: newProject.name,
         description: newProject.description,
@@ -76,15 +168,148 @@ function ProductComplianceCouncil() {
       if (result.success) {
         setNewProject({ name: '', description: '', priority: 'Medium' });
         setShowNewProjectForm(false);
+        alert('Project created successfully via SDK fallback!');
+        await handleForceRefreshProjects();
       } else {
         alert('Failed to create project: ' + result.error);
       }
-    } catch (error) {
-      alert('An error occurred while creating the project.');
+    } catch (error: any) {
+      // console.error('🔥 Error creating project:', error);
+      alert('An error occurred while creating the project: ' + error.message);
+    }
+  };
+
+
+
+
+
+
+
+  // Force refresh projects
+  const handleForceRefreshProjects = async () => {
+    if (!currentUser) {
+      alert('Please sign in to refresh projects.');
+      return;
+    }
+
+    // console.log('🔥 Force refreshing projects for user:', currentUser.uid);
+    setLoading(true);
+    
+    try {
+      // Get fresh Bearer token using the simple signUp approach
+      // console.log('🔥 Force refresh - fetching fresh Bearer token...');
+      const tokenResult = await fetchBearerToken();
+      
+      if (tokenResult.success) {
+        // console.log('🔥 Force refresh - using REST API with fresh Bearer token...');
+        const result = await getUserProjectsREST(currentUser.uid, tokenResult.idToken);
+        
+        if (result.success) {
+          setProjects(result.projects);
+          setLoading(false);
+          // console.log('🔥 Force refresh - set projects from REST API:', result.projects);
+          alert(`Force refresh complete:\n\nREST API: ${result.projects.length} projects\n\nProjects loaded successfully!`);
+          return;
+        } else {
+          // console.log('🔥 REST API failed, trying SDK fallback...');
+        }
+      } else {
+        // console.log('🔥 Failed to get Bearer token, trying SDK fallback...');
+      }
+
+      // Fallback to SDK method
+      const result = await initializeUserProjects(currentUser.uid);
+      // console.log('🔥 Force refresh - Firebase SDK result:', result);
+      
+      if (result.success) {
+        setProjects(result.projects);
+        setLoading(false);
+        // console.log('🔥 Force refresh - set projects from Firebase SDK:', result.projects);
+        alert(`Force refresh complete:\n\nFirebase SDK: ${result.projects.length} projects\n\nProjects loaded successfully!`);
+      } else {
+        // Fallback to localStorage
+        const localProjects = JSON.parse(localStorage.getItem(`projects_${currentUser.uid}`) || '[]');
+        setProjects(localProjects);
+        setLoading(false);
+        // console.log('🔥 Force refresh - fallback to localStorage:', localProjects);
+        alert(`Force refresh complete:\n\nFirebase SDK: Error (${result.error})\nlocalStorage: ${localProjects.length} projects\n\nUsing localStorage fallback.`);
+      }
+    } catch (error: any) {
+      // console.error('🔥 Force refresh error:', error);
+      setLoading(false);
+      // Fallback to localStorage
+      const localProjects = JSON.parse(localStorage.getItem(`projects_${currentUser.uid}`) || '[]');
+      setProjects(localProjects);
+      alert('Force refresh failed: ' + error.message + '\n\nUsing localStorage fallback.');
+    }
+  };
+
+  // Manual save to Firebase function using REST API with fresh Bearer token
+  const handleSaveToFirebase = async () => {
+    if (!currentUser) {
+      alert('Please sign in to save projects.');
+      return;
+    }
+
+    // console.log('🔥 Manual save to Firebase for user:', currentUser.uid);
+    
+    try {
+      // Get fresh Bearer token using the simple signUp approach
+      // console.log('🔥 Fetching fresh Bearer token for save operation...');
+      const tokenResult = await fetchBearerToken();
+      
+      if (!tokenResult.success) {
+        alert('Failed to get Bearer token: ' + tokenResult.error);
+        return;
+      }
+
+      // Get projects from localStorage
+      const localProjects = JSON.parse(localStorage.getItem(`projects_${currentUser.uid}`) || '[]');
+      // console.log('🔥 Local projects to save:', localProjects.length);
+
+      let syncedCount = 0;
+      let errorCount = 0;
+
+      // Save each project to Firebase using REST API
+      for (const project of localProjects) {
+        try {
+          // console.log('🔥 Saving project to Firebase:', project.name);
+          
+          const result = await createProjectREST({
+            name: project.name,
+            description: project.description,
+            priority: project.priority,
+            status: project.status
+          }, currentUser.uid, tokenResult.idToken);
+
+          if (result.success) {
+            syncedCount++;
+            // console.log('🔥 Project saved successfully:', project.name);
+          } else {
+            errorCount++;
+            // console.error('🔥 Failed to save project:', project.name, result.error);
+          }
+        } catch (error: any) {
+          errorCount++;
+          // console.error('🔥 Error saving project:', project.name, error.message);
+        }
+      }
+
+      // Show results
+      if (syncedCount > 0) {
+        alert(`Successfully synced ${syncedCount} projects to Firebase!\n${errorCount > 0 ? `\n${errorCount} projects failed to sync.` : ''}`);
+        // Refresh projects after sync
+        await handleForceRefreshProjects();
+      } else {
+        alert(`Failed to sync any projects to Firebase.\n${errorCount} projects failed.`);
+      }
+    } catch (error: any) {
+      // console.error('🔥 Manual sync error:', error);
+      alert('Error syncing projects: ' + error.message);
     }
   };
   
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: Project['status']) => {
     switch (status) {
       case 'In Progress': return '#059669';
       case 'Pending': return '#d97706';
@@ -94,7 +319,7 @@ function ProductComplianceCouncil() {
     }
   };
   
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: Project['priority']) => {
     switch (priority) {
       case 'High': return '#dc2626';
       case 'Medium': return '#d97706';
@@ -151,19 +376,19 @@ function ProductComplianceCouncil() {
       </div>
     );
   }
-
+  
   return (
     <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
           <div>
-            <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
-              Product Compliance Council
-            </h1>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', color: '#1f2937' }}>
+          Product Compliance Council
+        </h1>
             <div style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>
               Signed in as: {currentUser.email}
             </div>
           </div>
-          <button
+        <button
             onClick={() => {
               setSigningOut(true);
               
@@ -183,20 +408,20 @@ function ProductComplianceCouncil() {
               window.location.href = '/';
             }}
             disabled={signingOut}
-            style={{
-              padding: '12px 24px',
+          style={{
+            padding: '12px 24px',
               backgroundColor: signingOut ? '#9ca3af' : '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              fontWeight: '500',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
               cursor: signingOut ? 'not-allowed' : 'pointer'
-            }}
-          >
+          }}
+        >
             {signingOut ? 'Signing Out...' : 'Sign Out'}
-          </button>
-        </div>
+        </button>
+      </div>
       
       {/* New Project Form */}
       {showNewProjectForm && (
@@ -253,10 +478,10 @@ function ProductComplianceCouncil() {
               <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
                 Priority
               </label>
-                <select
-                  value={newProject.priority}
+              <select
+                value={newProject.priority}
                   onChange={(e) => setNewProject({...newProject, priority: e.target.value as 'Low' | 'Medium' | 'High'})}
-                  style={{
+                style={{
                   width: '100%',
                   height: '44px',
                   padding: '0 12px',
@@ -374,8 +599,8 @@ function ProductComplianceCouncil() {
             </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
-            {projects.map((project) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+          {projects.map((project) => (
             <div key={project.id} style={{
               backgroundColor: 'white',
               padding: '20px',
@@ -449,43 +674,11 @@ function ProductComplianceCouncil() {
                 </button>
               </div>
             </div>
-            ))}
-          </div>
+          ))}
+        </div>
         )}
       </div>
       
-      {/* Quick Actions */}
-      <div style={{ backgroundColor: 'white', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-          Quick Actions
-        </h2>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button style={{
-            padding: '12px 24px',
-            backgroundColor: '#f3f4f6',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}>
-            View Reports
-          </button>
-          <button style={{
-            padding: '12px 24px',
-            backgroundColor: '#f3f4f6',
-            color: '#374151',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '16px',
-            fontWeight: '500',
-            cursor: 'pointer'
-          }}>
-            Export Data
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -941,14 +1134,14 @@ function Index() {
 
 const App = () => (
   <AuthProvider>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
-        <Route path="/compliance-review" element={<ComplianceReviewPage />} />
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
+      <Route path="/compliance-review" element={<ComplianceReviewPage />} />
         <Route path="*" element={<Index />} />
-      </Routes>
-    </BrowserRouter>
+    </Routes>
+  </BrowserRouter>
   </AuthProvider>
 );
 
