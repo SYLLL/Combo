@@ -68,6 +68,7 @@ export default function ComplianceReviewPage() {
   const [complianceAnalysis, setComplianceAnalysis] = useState(null);
   const [dataFlowAnalysis, setDataFlowAnalysis] = useState(null);
   const [isAnalyzingDataFlow, setIsAnalyzingDataFlow] = useState(false);
+  const [enhancedLegalReview, setEnhancedLegalReview] = useState(null);
   const [editableSchema, setEditableSchema] = useState(`{
   "email": {
     "type": "string",
@@ -1018,6 +1019,10 @@ export default function ComplianceReviewPage() {
           
           setComplianceAnalysis(mergedComplianceAnalysis);
           console.log('Compliance analysis set:', mergedComplianceAnalysis);
+          
+          // Generate enhanced legal review with compliance assessments
+          const enhancedReview = generateEnhancedLegalReview(mergedComplianceAnalysis, productDescription, editableSchema);
+          setEnhancedLegalReview(enhancedReview);
         }
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
@@ -1036,6 +1041,159 @@ export default function ComplianceReviewPage() {
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const generateEnhancedLegalReview = (complianceAnalysis: any, productDescription: string, schemaJson: string) => {
+    // Parse the schema
+    let parsedSchema;
+    try {
+      parsedSchema = JSON.parse(schemaJson);
+    } catch (error) {
+      parsedSchema = { email: { type: "string", format: "email" } };
+    }
+
+    const facts = [];
+    const notes = [];
+    const suggestions = [];
+    const mitigations = [];
+
+    // COPPA Assessment
+    if (complianceAnalysis?.coppa) {
+      facts.push(`COPPA Compliance Assessment: ${complianceAnalysis.coppa.status || 'Under Review'}`);
+      facts.push(`Age verification requirement: ${complianceAnalysis.coppa.ageVerification ? 'Required' : 'Not required'}`);
+      
+      if (complianceAnalysis.coppa.recommendations) {
+        complianceAnalysis.coppa.recommendations.forEach((rec: string) => {
+          suggestions.push(`COPPA: ${rec}`);
+        });
+      }
+      
+      if (complianceAnalysis.coppa.risks) {
+        complianceAnalysis.coppa.risks.forEach((risk: string) => {
+          notes.push(`COPPA Risk: ${risk}`);
+        });
+      }
+    }
+
+    // HIPAA Assessment
+    if (complianceAnalysis?.hipaa) {
+      facts.push(`HIPAA Compliance Assessment: ${complianceAnalysis.hipaa.status || 'Under Review'}`);
+      facts.push(`Health data processing: ${complianceAnalysis.hipaa.healthDataProcessing ? 'Identified' : 'Not identified'}`);
+      
+      if (complianceAnalysis.hipaa.recommendations) {
+        complianceAnalysis.hipaa.recommendations.forEach((rec: string) => {
+          suggestions.push(`HIPAA: ${rec}`);
+        });
+      }
+      
+      if (complianceAnalysis.hipaa.risks) {
+        complianceAnalysis.hipaa.risks.forEach((risk: string) => {
+          notes.push(`HIPAA Risk: ${risk}`);
+        });
+      }
+    }
+
+    // GDPR Assessment
+    if (complianceAnalysis?.gdpr) {
+      facts.push(`GDPR Compliance Assessment: ${complianceAnalysis.gdpr.status || 'Under Review'}`);
+      facts.push(`Data subject rights: ${complianceAnalysis.gdpr.dataSubjectRights ? 'Required' : 'Not required'}`);
+      facts.push(`Consent management: ${complianceAnalysis.gdpr.consentManagement ? 'Required' : 'Not required'}`);
+      
+      if (complianceAnalysis.gdpr.recommendations) {
+        complianceAnalysis.gdpr.recommendations.forEach((rec: string) => {
+          suggestions.push(`GDPR: ${rec}`);
+        });
+      }
+      
+      if (complianceAnalysis.gdpr.risks) {
+        complianceAnalysis.gdpr.risks.forEach((risk: string) => {
+          notes.push(`GDPR Risk: ${risk}`);
+        });
+      }
+    }
+
+    // AI Risk Assessment
+    if (complianceAnalysis?.aiRisk) {
+      facts.push(`AI Risk Assessment: ${complianceAnalysis.aiRisk.overallRisk || 'Medium'}`);
+      facts.push(`AI bias risk: ${complianceAnalysis.aiRisk.biasRisk || 'Medium'}`);
+      facts.push(`AI transparency: ${complianceAnalysis.aiRisk.transparencyLevel || 'Partial'}`);
+      
+      if (complianceAnalysis.aiRisk.recommendations) {
+        complianceAnalysis.aiRisk.recommendations.forEach((rec: string) => {
+          suggestions.push(`AI Risk: ${rec}`);
+        });
+      }
+      
+      if (complianceAnalysis.aiRisk.mitigations) {
+        complianceAnalysis.aiRisk.mitigations.forEach((mit: string) => {
+          mitigations.push(`AI: ${mit}`);
+        });
+      }
+    } else {
+      // Generate basic AI risk assessment based on product description
+      const hasAIKeywords = /ai|artificial intelligence|machine learning|ml|algorithm|automated|bot/i.test(productDescription);
+      if (hasAIKeywords) {
+        facts.push('AI Risk Assessment: AI/ML components detected in product description');
+        notes.push('AI Risk: Potential bias, transparency, and accountability concerns');
+        suggestions.push('AI Risk: Implement AI governance framework and bias testing');
+        mitigations.push('AI: Regular AI model auditing and human oversight required');
+      }
+    }
+
+    // Schema-based assessments
+    if (parsedSchema && typeof parsedSchema === 'object') {
+      const hasEmail = parsedSchema.email || Object.keys(parsedSchema).some(key => key.toLowerCase().includes('email'));
+      const hasPersonalData = Object.keys(parsedSchema).some(key => 
+        key.toLowerCase().includes('name') || 
+        key.toLowerCase().includes('phone') || 
+        key.toLowerCase().includes('address')
+      );
+
+      if (hasEmail) {
+        facts.push('Personal Data Collection: Email addresses identified in API schema');
+        notes.push('Privacy Note: Email collection requires consent and data protection measures');
+        suggestions.push('Privacy: Implement email validation and opt-in consent mechanisms');
+        mitigations.push('Privacy: Encrypt email data and implement data retention policies');
+      }
+
+      if (hasPersonalData) {
+        facts.push('Personal Data Collection: Additional personal information fields identified');
+        notes.push('Privacy Note: Personal data processing requires GDPR/CCPA compliance');
+        suggestions.push('Privacy: Implement comprehensive data protection measures');
+        mitigations.push('Privacy: Regular privacy impact assessments and data minimization');
+      }
+    }
+
+    // Product-specific facts
+    facts.push(`Product Description: ${productDescription}`);
+    facts.push(`Analysis Date: ${new Date().toLocaleDateString()}`);
+
+    // General compliance notes
+    notes.push('Compliance Note: Regular legal review recommended as product evolves');
+    notes.push('Compliance Note: Consider jurisdiction-specific requirements based on user base');
+
+    // General suggestions
+    suggestions.push('General: Implement privacy by design principles');
+    suggestions.push('General: Regular compliance training for development team');
+    suggestions.push('General: Maintain comprehensive audit logs');
+
+    // General mitigations
+    mitigations.push('General: Implement comprehensive data protection framework');
+    mitigations.push('General: Regular third-party security assessments');
+    mitigations.push('General: User-friendly privacy controls and transparency');
+
+    return {
+      facts,
+      notes,
+      suggestions,
+      mitigations,
+      complianceSummary: {
+        coppa: complianceAnalysis?.coppa?.status || 'Not assessed',
+        hipaa: complianceAnalysis?.hipaa?.status || 'Not assessed',
+        gdpr: complianceAnalysis?.gdpr?.status || 'Not assessed',
+        aiRisk: complianceAnalysis?.aiRisk?.overallRisk || 'Not assessed'
+      }
+    };
   };
 
   const handleAnalyzeDataFlow = async () => {
@@ -1521,12 +1679,61 @@ export default function ComplianceReviewPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Compliance Summary */}
+              {enhancedLegalReview?.complianceSummary && (
+                <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                  <h3 className="text-sm font-medium text-blue-900 mb-2">Compliance Overview</h3>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">COPPA:</span>
+                      <span className={`font-medium ${
+                        enhancedLegalReview.complianceSummary.coppa === 'Compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.coppa === 'Non-compliant' ? 'text-red-600' :
+                        'text-yellow-600'
+                      }`}>
+                        {enhancedLegalReview.complianceSummary.coppa}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">HIPAA:</span>
+                      <span className={`font-medium ${
+                        enhancedLegalReview.complianceSummary.hipaa === 'Compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.hipaa === 'Non-compliant' ? 'text-red-600' :
+                        'text-yellow-600'
+                      }`}>
+                        {enhancedLegalReview.complianceSummary.hipaa}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">GDPR:</span>
+                      <span className={`font-medium ${
+                        enhancedLegalReview.complianceSummary.gdpr === 'Compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.gdpr === 'Non-compliant' ? 'text-red-600' :
+                        'text-yellow-600'
+                      }`}>
+                        {enhancedLegalReview.complianceSummary.gdpr}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-blue-700">AI Risk:</span>
+                      <span className={`font-medium ${
+                        enhancedLegalReview.complianceSummary.aiRisk === 'Low' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.aiRisk === 'High' ? 'text-red-600' :
+                        'text-yellow-600'
+                      }`}>
+                        {enhancedLegalReview.complianceSummary.aiRisk}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-medium text-foreground mb-2">
                   Facts
                 </h3>
                 <div className="space-y-2">
-                  {legalReview.facts.map((fact, index) => (
+                  {(enhancedLegalReview?.facts || legalReview.facts).map((fact, index) => (
                     <p key={index} className="text-sm text-muted-foreground">
                       {fact}
                     </p>
@@ -1539,7 +1746,7 @@ export default function ComplianceReviewPage() {
                   Notes
                 </h3>
                 <div className="space-y-2">
-                  {legalReview.notes.map((note, index) => (
+                  {(enhancedLegalReview?.notes || legalReview.notes).map((note, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">{note}</p>
@@ -1553,7 +1760,7 @@ export default function ComplianceReviewPage() {
                   Suggestions
                 </h3>
                 <div className="space-y-2">
-                  {legalReview.suggestions.map((suggestion, index) => (
+                  {(enhancedLegalReview?.suggestions || legalReview.suggestions).map((suggestion, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">
@@ -1569,7 +1776,7 @@ export default function ComplianceReviewPage() {
                   Mitigations
                 </h3>
                 <div className="space-y-2">
-                  {legalReview.mitigations.map((mitigation, index) => (
+                  {(enhancedLegalReview?.mitigations || legalReview.mitigations).map((mitigation, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">
