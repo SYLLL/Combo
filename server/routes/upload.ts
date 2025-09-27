@@ -4,7 +4,8 @@ import fs from 'fs';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini API
-const genAI = new GoogleGenerativeAI('AIzaSyA2LlGf7OC1hQcRU67yuOU7KiPruYRMpbE');
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'AIzaSyA2LlGf7OC1hQcRU67yuOU7KiPruYRMpbE';
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -651,9 +652,9 @@ export const trackPageView = (page) => {
 export async function testGeminiConnection(): Promise<boolean> {
   try {
     console.log('Testing Gemini API connection...');
-    console.log('API Key (first 10 chars):', 'AIzaSyA2LlGf7OC1hQcRU67yuOU7KiPruYRMpbE'.substring(0, 10) + '...');
+    console.log('API Key (first 10 chars):', GEMINI_API_KEY.substring(0, 10) + '...');
     
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     console.log('Model created successfully');
     
     const result = await model.generateContent("Say 'Hello World'");
@@ -688,7 +689,7 @@ async function analyzeComplianceWithGemini(documentText: string, productDescript
       console.log('- Accessibility issues:', figmaAnalysis.summary.accessibilityIssues);
     }
     
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const prompt = `
 You are a legal compliance expert. Analyze the following product requirements document, product description, GitHub repository code, and Figma design analysis for compliance with COPPA, HIPAA, and GDPR regulations.

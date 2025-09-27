@@ -1021,7 +1021,9 @@ export default function ComplianceReviewPage() {
           console.log('Compliance analysis set:', mergedComplianceAnalysis);
           
           // Generate enhanced legal review with compliance assessments
+          console.log('🔍 Compliance Analysis for Enhanced Review:', mergedComplianceAnalysis);
           const enhancedReview = generateEnhancedLegalReview(mergedComplianceAnalysis, productDescription, editableSchema);
+          console.log('📋 Generated Enhanced Legal Review:', enhancedReview);
           setEnhancedLegalReview(enhancedReview);
         }
       } else {
@@ -1059,55 +1061,54 @@ export default function ComplianceReviewPage() {
 
     // COPPA Assessment
     if (complianceAnalysis?.coppa) {
-      facts.push(`COPPA Compliance Assessment: ${complianceAnalysis.coppa.status || 'Under Review'}`);
-      facts.push(`Age verification requirement: ${complianceAnalysis.coppa.ageVerification ? 'Required' : 'Not required'}`);
+      const coppaStatus = complianceAnalysis.coppa.compliance || 'Under Review';
+      facts.push(`COPPA Compliance Assessment: ${coppaStatus}`);
       
-      if (complianceAnalysis.coppa.recommendations) {
-        complianceAnalysis.coppa.recommendations.forEach((rec: string) => {
-          suggestions.push(`COPPA: ${rec}`);
+      if (complianceAnalysis.coppa.issues && complianceAnalysis.coppa.issues.length > 0) {
+        complianceAnalysis.coppa.issues.forEach((issue: string) => {
+          notes.push(`COPPA Issue: ${issue}`);
         });
       }
       
-      if (complianceAnalysis.coppa.risks) {
-        complianceAnalysis.coppa.risks.forEach((risk: string) => {
-          notes.push(`COPPA Risk: ${risk}`);
+      if (complianceAnalysis.coppa.recommendations && complianceAnalysis.coppa.recommendations.length > 0) {
+        complianceAnalysis.coppa.recommendations.forEach((rec: string) => {
+          suggestions.push(`COPPA: ${rec}`);
         });
       }
     }
 
     // HIPAA Assessment
     if (complianceAnalysis?.hipaa) {
-      facts.push(`HIPAA Compliance Assessment: ${complianceAnalysis.hipaa.status || 'Under Review'}`);
-      facts.push(`Health data processing: ${complianceAnalysis.hipaa.healthDataProcessing ? 'Identified' : 'Not identified'}`);
+      const hipaaStatus = complianceAnalysis.hipaa.compliance || 'Under Review';
+      facts.push(`HIPAA Compliance Assessment: ${hipaaStatus}`);
       
-      if (complianceAnalysis.hipaa.recommendations) {
-        complianceAnalysis.hipaa.recommendations.forEach((rec: string) => {
-          suggestions.push(`HIPAA: ${rec}`);
+      if (complianceAnalysis.hipaa.issues && complianceAnalysis.hipaa.issues.length > 0) {
+        complianceAnalysis.hipaa.issues.forEach((issue: string) => {
+          notes.push(`HIPAA Issue: ${issue}`);
         });
       }
       
-      if (complianceAnalysis.hipaa.risks) {
-        complianceAnalysis.hipaa.risks.forEach((risk: string) => {
-          notes.push(`HIPAA Risk: ${risk}`);
+      if (complianceAnalysis.hipaa.recommendations && complianceAnalysis.hipaa.recommendations.length > 0) {
+        complianceAnalysis.hipaa.recommendations.forEach((rec: string) => {
+          suggestions.push(`HIPAA: ${rec}`);
         });
       }
     }
 
     // GDPR Assessment
     if (complianceAnalysis?.gdpr) {
-      facts.push(`GDPR Compliance Assessment: ${complianceAnalysis.gdpr.status || 'Under Review'}`);
-      facts.push(`Data subject rights: ${complianceAnalysis.gdpr.dataSubjectRights ? 'Required' : 'Not required'}`);
-      facts.push(`Consent management: ${complianceAnalysis.gdpr.consentManagement ? 'Required' : 'Not required'}`);
+      const gdprStatus = complianceAnalysis.gdpr.compliance || 'Under Review';
+      facts.push(`GDPR Compliance Assessment: ${gdprStatus}`);
       
-      if (complianceAnalysis.gdpr.recommendations) {
-        complianceAnalysis.gdpr.recommendations.forEach((rec: string) => {
-          suggestions.push(`GDPR: ${rec}`);
+      if (complianceAnalysis.gdpr.issues && complianceAnalysis.gdpr.issues.length > 0) {
+        complianceAnalysis.gdpr.issues.forEach((issue: string) => {
+          notes.push(`GDPR Issue: ${issue}`);
         });
       }
       
-      if (complianceAnalysis.gdpr.risks) {
-        complianceAnalysis.gdpr.risks.forEach((risk: string) => {
-          notes.push(`GDPR Risk: ${risk}`);
+      if (complianceAnalysis.gdpr.recommendations && complianceAnalysis.gdpr.recommendations.length > 0) {
+        complianceAnalysis.gdpr.recommendations.forEach((rec: string) => {
+          suggestions.push(`GDPR: ${rec}`);
         });
       }
     }
@@ -1188,9 +1189,9 @@ export default function ComplianceReviewPage() {
       suggestions,
       mitigations,
       complianceSummary: {
-        coppa: complianceAnalysis?.coppa?.status || 'Not assessed',
-        hipaa: complianceAnalysis?.hipaa?.status || 'Not assessed',
-        gdpr: complianceAnalysis?.gdpr?.status || 'Not assessed',
+        coppa: complianceAnalysis?.coppa?.compliance || 'Not assessed',
+        hipaa: complianceAnalysis?.hipaa?.compliance || 'Not assessed',
+        gdpr: complianceAnalysis?.gdpr?.compliance || 'Not assessed',
         aiRisk: complianceAnalysis?.aiRisk?.overallRisk || 'Not assessed'
       }
     };
@@ -1687,8 +1688,8 @@ export default function ComplianceReviewPage() {
                     <div className="flex justify-between">
                       <span className="text-blue-700">COPPA:</span>
                       <span className={`font-medium ${
-                        enhancedLegalReview.complianceSummary.coppa === 'Compliant' ? 'text-green-600' :
-                        enhancedLegalReview.complianceSummary.coppa === 'Non-compliant' ? 'text-red-600' :
+                        enhancedLegalReview.complianceSummary.coppa === 'compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.coppa === 'non-compliant' ? 'text-red-600' :
                         'text-yellow-600'
                       }`}>
                         {enhancedLegalReview.complianceSummary.coppa}
@@ -1697,8 +1698,8 @@ export default function ComplianceReviewPage() {
                     <div className="flex justify-between">
                       <span className="text-blue-700">HIPAA:</span>
                       <span className={`font-medium ${
-                        enhancedLegalReview.complianceSummary.hipaa === 'Compliant' ? 'text-green-600' :
-                        enhancedLegalReview.complianceSummary.hipaa === 'Non-compliant' ? 'text-red-600' :
+                        enhancedLegalReview.complianceSummary.hipaa === 'compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.hipaa === 'non-compliant' ? 'text-red-600' :
                         'text-yellow-600'
                       }`}>
                         {enhancedLegalReview.complianceSummary.hipaa}
@@ -1707,8 +1708,8 @@ export default function ComplianceReviewPage() {
                     <div className="flex justify-between">
                       <span className="text-blue-700">GDPR:</span>
                       <span className={`font-medium ${
-                        enhancedLegalReview.complianceSummary.gdpr === 'Compliant' ? 'text-green-600' :
-                        enhancedLegalReview.complianceSummary.gdpr === 'Non-compliant' ? 'text-red-600' :
+                        enhancedLegalReview.complianceSummary.gdpr === 'compliant' ? 'text-green-600' :
+                        enhancedLegalReview.complianceSummary.gdpr === 'non-compliant' ? 'text-red-600' :
                         'text-yellow-600'
                       }`}>
                         {enhancedLegalReview.complianceSummary.gdpr}
