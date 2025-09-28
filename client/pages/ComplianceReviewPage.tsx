@@ -69,6 +69,7 @@ export default function ComplianceReviewPage() {
   const [dataFlowAnalysis, setDataFlowAnalysis] = useState(null);
   const [isAnalyzingDataFlow, setIsAnalyzingDataFlow] = useState(false);
   const [enhancedLegalReview, setEnhancedLegalReview] = useState(null);
+  const [riskTable, setRiskTable] = useState(null);
   const [editableSchema, setEditableSchema] = useState(`{
   "email": {
     "type": "string",
@@ -1025,6 +1026,11 @@ export default function ComplianceReviewPage() {
           const enhancedReview = generateEnhancedLegalReview(mergedComplianceAnalysis, productDescription, editableSchema);
           console.log('📋 Generated Enhanced Legal Review:', enhancedReview);
           setEnhancedLegalReview(enhancedReview);
+          
+          // Generate risk table
+          const riskTableData = generateRiskTable(mergedComplianceAnalysis, result.codeSnippets || [], result.githubSearchResults || '');
+          console.log('🚨 Generated Risk Table:', riskTableData);
+          setRiskTable(riskTableData);
         }
       } else {
         const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
@@ -1195,6 +1201,156 @@ export default function ComplianceReviewPage() {
         aiRisk: complianceAnalysis?.aiRisk?.overallRisk || 'Not assessed'
       }
     };
+  };
+
+  const generateRiskTable = (complianceAnalysis: any, codeSnippets: any[], githubSearchResults: string) => {
+    const risks = [];
+    let riskIdCounter = 1;
+
+    // Generate risks from COPPA compliance issues
+    if (complianceAnalysis?.coppa?.issues) {
+      complianceAnalysis.coppa.issues.forEach((issue: string, index: number) => {
+        risks.push({
+          risk_id: `COPPA-${riskIdCounter.toString().padStart(3, '0')}`,
+          risk_status: 'OPEN',
+          regulation: 'COPPA',
+          severity: 'HIGH',
+          description: issue,
+          evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'COPPA', issue),
+          recommendation: complianceAnalysis.coppa.recommendations?.[index] || 'Implement COPPA compliance measures'
+        });
+        riskIdCounter++;
+      });
+    }
+
+    // Generate risks from HIPAA compliance issues
+    if (complianceAnalysis?.hipaa?.issues) {
+      complianceAnalysis.hipaa.issues.forEach((issue: string, index: number) => {
+        risks.push({
+          risk_id: `HIPAA-${riskIdCounter.toString().padStart(3, '0')}`,
+          risk_status: 'OPEN',
+          regulation: 'HIPAA',
+          severity: 'HIGH',
+          description: issue,
+          evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'HIPAA', issue),
+          recommendation: complianceAnalysis.hipaa.recommendations?.[index] || 'Implement HIPAA compliance measures'
+        });
+        riskIdCounter++;
+      });
+    }
+
+    // Generate risks from GDPR compliance issues
+    if (complianceAnalysis?.gdpr?.issues) {
+      complianceAnalysis.gdpr.issues.forEach((issue: string, index: number) => {
+        risks.push({
+          risk_id: `GDPR-${riskIdCounter.toString().padStart(3, '0')}`,
+          risk_status: 'OPEN',
+          regulation: 'GDPR',
+          severity: 'HIGH',
+          description: issue,
+          evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'GDPR', issue),
+          recommendation: complianceAnalysis.gdpr.recommendations?.[index] || 'Implement GDPR compliance measures'
+        });
+        riskIdCounter++;
+      });
+    }
+
+    // Generate risks from code snippets analysis
+    if (codeSnippets && codeSnippets.length > 0) {
+      codeSnippets.forEach((snippet: any, index: number) => {
+        if (snippet.content) {
+          risks.push({
+            risk_id: `CODE-${riskIdCounter.toString().padStart(3, '0')}`,
+            risk_status: 'OPEN',
+            regulation: 'GENERAL',
+            severity: 'MEDIUM',
+            description: `Potential security issue in ${snippet.file || 'code file'}`,
+            evidence: [
+              {
+                type: 'code_snippet',
+                file: snippet.file || 'Unknown file',
+                lines: snippet.lines || 'Unknown lines',
+                content: snippet.content.substring(0, 200) + (snippet.content.length > 200 ? '...' : '')
+              }
+            ],
+            recommendation: 'Review and secure the identified code section'
+          });
+          riskIdCounter++;
+        }
+      });
+    }
+
+    // Generate risks from GitHub search results
+    if (githubSearchResults && githubSearchResults.length > 0) {
+      const searchLines = githubSearchResults.split('\n').slice(0, 10); // Take first 10 lines
+      if (searchLines.length > 0) {
+        risks.push({
+          risk_id: `GITHUB-${riskIdCounter.toString().padStart(3, '0')}`,
+          risk_status: 'OPEN',
+          regulation: 'GENERAL',
+          severity: 'MEDIUM',
+          description: 'Potential issues identified in GitHub repository analysis',
+          evidence: [
+            {
+              type: 'repository_analysis',
+              file: 'Repository Analysis',
+              lines: 'Multiple files',
+              content: searchLines.join('\n').substring(0, 300) + '...'
+            }
+          ],
+          recommendation: 'Review repository for compliance and security issues'
+        });
+        riskIdCounter++;
+      }
+    }
+
+    return {
+      total_risks: risks.length,
+      open_risks: risks.filter(r => r.risk_status === 'OPEN').length,
+      resolved_risks: risks.filter(r => r.risk_status === 'RESOLVED').length,
+      risks: risks
+    };
+  };
+
+  const generateCodeEvidence = (codeSnippets: any[], githubSearchResults: string, regulation: string, issue: string) => {
+    const evidence = [];
+
+    // Add relevant code snippets
+    if (codeSnippets && codeSnippets.length > 0) {
+      codeSnippets.slice(0, 2).forEach((snippet: any) => {
+        if (snippet.content) {
+          evidence.push({
+            type: 'code_snippet',
+            file: snippet.file || 'Unknown file',
+            lines: snippet.lines || 'Unknown lines',
+            content: snippet.content.substring(0, 200) + (snippet.content.length > 200 ? '...' : '')
+          });
+        }
+      });
+    }
+
+    // Add GitHub search results if available
+    if (githubSearchResults && githubSearchResults.length > 0) {
+      const relevantLines = githubSearchResults.split('\n').slice(0, 3);
+      evidence.push({
+        type: 'repository_context',
+        file: 'Repository Analysis',
+        lines: 'Search results',
+        content: relevantLines.join('\n').substring(0, 200) + '...'
+      });
+    }
+
+    // If no evidence found, create a generic one
+    if (evidence.length === 0) {
+      evidence.push({
+        type: 'analysis_note',
+        file: 'Compliance Analysis',
+        lines: 'N/A',
+        content: `Issue identified through ${regulation} compliance analysis: ${issue.substring(0, 150)}...`
+      });
+    }
+
+    return evidence;
   };
 
   const handleAnalyzeDataFlow = async () => {
@@ -1807,6 +1963,100 @@ export default function ComplianceReviewPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Risk Table Section */}
+          {riskTable && (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <div className="h-5 w-5 bg-red-500 rounded text-white text-xs flex items-center justify-center font-bold">
+                    ⚠️
+                  </div>
+                  Risk Assessment Table
+                </CardTitle>
+                <div className="flex gap-4 text-sm text-muted-foreground">
+                  <span>Total Risks: <span className="font-semibold text-foreground">{riskTable.total_risks}</span></span>
+                  <span>Open: <span className="font-semibold text-red-600">{riskTable.open_risks}</span></span>
+                  <span>Resolved: <span className="font-semibold text-green-600">{riskTable.resolved_risks}</span></span>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2 font-medium text-sm">Risk ID</th>
+                        <th className="text-left p-2 font-medium text-sm">Status</th>
+                        <th className="text-left p-2 font-medium text-sm">Regulation</th>
+                        <th className="text-left p-2 font-medium text-sm">Severity</th>
+                        <th className="text-left p-2 font-medium text-sm">Description</th>
+                        <th className="text-left p-2 font-medium text-sm">Evidence</th>
+                        <th className="text-left p-2 font-medium text-sm">Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {riskTable.risks.map((risk: any, index: number) => (
+                        <tr key={index} className="border-b hover:bg-muted/50">
+                          <td className="p-2 text-sm font-mono text-blue-600">{risk.risk_id}</td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              risk.risk_status === 'OPEN' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {risk.risk_status}
+                            </span>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              risk.regulation === 'COPPA' ? 'bg-blue-100 text-blue-800' :
+                              risk.regulation === 'HIPAA' ? 'bg-purple-100 text-purple-800' :
+                              risk.regulation === 'GDPR' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {risk.regulation}
+                            </span>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              risk.severity === 'HIGH' ? 'bg-red-100 text-red-800' :
+                              risk.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-green-100 text-green-800'
+                            }`}>
+                              {risk.severity}
+                            </span>
+                          </td>
+                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
+                            <div className="truncate" title={risk.description}>
+                              {risk.description}
+                            </div>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <div className="space-y-1 max-w-xs">
+                              {risk.evidence.slice(0, 2).map((evidence: any, evidenceIndex: number) => (
+                                <div key={evidenceIndex} className="bg-muted p-2 rounded text-xs">
+                                  <div className="font-medium text-blue-600">{evidence.file}</div>
+                                  <div className="text-muted-foreground">Lines: {evidence.lines}</div>
+                                  <div className="mt-1 font-mono text-xs bg-background p-1 rounded border">
+                                    {evidence.content}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
+                            <div className="truncate" title={risk.recommendation}>
+                              {risk.recommendation}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* API Schema Section */}
           <Card className="lg:col-span-1">
