@@ -1646,7 +1646,8 @@ export default function ComplianceReviewPage() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        {/* Existing Cards - Always Visible */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
           {/* Launch Compliance Section */}
           <Card className="md:col-span-2 lg:col-span-1">
             <CardHeader>
@@ -1963,100 +1964,6 @@ export default function ComplianceReviewPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Risk Table Section */}
-          {riskTable && (
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <div className="h-5 w-5 bg-red-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                    ⚠️
-                  </div>
-                  Risk Assessment Table
-                </CardTitle>
-                <div className="flex gap-4 text-sm text-muted-foreground">
-                  <span>Total Risks: <span className="font-semibold text-foreground">{riskTable.total_risks}</span></span>
-                  <span>Open: <span className="font-semibold text-red-600">{riskTable.open_risks}</span></span>
-                  <span>Resolved: <span className="font-semibold text-green-600">{riskTable.resolved_risks}</span></span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="text-left p-2 font-medium text-sm">Risk ID</th>
-                        <th className="text-left p-2 font-medium text-sm">Status</th>
-                        <th className="text-left p-2 font-medium text-sm">Regulation</th>
-                        <th className="text-left p-2 font-medium text-sm">Severity</th>
-                        <th className="text-left p-2 font-medium text-sm">Description</th>
-                        <th className="text-left p-2 font-medium text-sm">Evidence</th>
-                        <th className="text-left p-2 font-medium text-sm">Recommendation</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {riskTable.risks.map((risk: any, index: number) => (
-                        <tr key={index} className="border-b hover:bg-muted/50">
-                          <td className="p-2 text-sm font-mono text-blue-600">{risk.risk_id}</td>
-                          <td className="p-2 text-sm">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              risk.risk_status === 'OPEN' 
-                                ? 'bg-red-100 text-red-800' 
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {risk.risk_status}
-                            </span>
-                          </td>
-                          <td className="p-2 text-sm">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              risk.regulation === 'COPPA' ? 'bg-blue-100 text-blue-800' :
-                              risk.regulation === 'HIPAA' ? 'bg-purple-100 text-purple-800' :
-                              risk.regulation === 'GDPR' ? 'bg-green-100 text-green-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {risk.regulation}
-                            </span>
-                          </td>
-                          <td className="p-2 text-sm">
-                            <span className={`px-2 py-1 rounded text-xs font-medium ${
-                              risk.severity === 'HIGH' ? 'bg-red-100 text-red-800' :
-                              risk.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {risk.severity}
-                            </span>
-                          </td>
-                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
-                            <div className="truncate" title={risk.description}>
-                              {risk.description}
-                            </div>
-                          </td>
-                          <td className="p-2 text-sm">
-                            <div className="space-y-1 max-w-xs">
-                              {risk.evidence.slice(0, 2).map((evidence: any, evidenceIndex: number) => (
-                                <div key={evidenceIndex} className="bg-muted p-2 rounded text-xs">
-                                  <div className="font-medium text-blue-600">{evidence.file}</div>
-                                  <div className="text-muted-foreground">Lines: {evidence.lines}</div>
-                                  <div className="mt-1 font-mono text-xs bg-background p-1 rounded border">
-                                    {evidence.content}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </td>
-                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
-                            <div className="truncate" title={risk.recommendation}>
-                              {risk.recommendation}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* API Schema Section */}
           <Card className="lg:col-span-1">
@@ -2474,6 +2381,26 @@ export default function ComplianceReviewPage() {
 
               <div>
                 <h3 className="text-sm font-medium text-foreground mb-2">
+                  Analysis Scope
+                </h3>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">Privacy implications</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-red-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">Compliance risks</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 bg-orange-500 rounded-full"></div>
+                    <p className="text-xs text-muted-foreground">Data retention policies</p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-foreground mb-2">
                   Privacy Impact
                 </h3>
                 <div className="bg-muted rounded-md p-3">
@@ -2491,159 +2418,135 @@ export default function ComplianceReviewPage() {
               >
                 {isAnalyzingDataFlow ? 'Analyzing...' : 'Analyze Data Flow'}
               </Button>
+
+              {/* Data Flow Analysis Results - Inline */}
+              {dataFlowAnalysis && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-semibold text-blue-800 mb-2">Analysis Results</h4>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="text-blue-700">
+                      <span className="font-semibold">{dataFlowAnalysis.summary?.totalNodes || 0}</span> Nodes
+                    </div>
+                    <div className="text-blue-700">
+                      <span className="font-semibold">{dataFlowAnalysis.summary?.totalEdges || 0}</span> Flows
+                    </div>
+                    <div className="text-blue-700">
+                      <span className="font-semibold">{dataFlowAnalysis.summary?.privacyImplications || 0}</span> Privacy Issues
+                    </div>
+                    <div className="text-blue-700">
+                      <span className="font-semibold">{dataFlowAnalysis.summary?.complianceRisks || 0}</span> Compliance Risks
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-2">
+                    Analysis completed successfully. Check the detailed results below.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
+        </div>
 
-          {/* Data Flow Analysis Results */}
-          {dataFlowAnalysis && (
+        {/* Generated Cards - Appear After Legal Review */}
+        {(riskTable || dataFlowAnalysis) && (
+          <div className="space-y-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Generated Analysis Results</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Risk Table Section */}
+              {riskTable && (
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="h-5 w-5 bg-blue-500 rounded text-white text-xs flex items-center justify-center font-bold">
-                    📊
+                  <div className="h-5 w-5 bg-red-500 rounded text-white text-xs flex items-center justify-center font-bold">
+                    ⚠️
                   </div>
-                  Data Flow Analysis Results
+                  Risk Assessment Table
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Generated data flow diagram and compliance analysis
-                </p>
+                <div className="flex gap-4 text-sm text-muted-foreground">
+                  <span>Total Risks: <span className="font-semibold text-foreground">{riskTable.total_risks}</span></span>
+                  <span>Open: <span className="font-semibold text-red-600">{riskTable.open_risks}</span></span>
+                  <span>Resolved: <span className="font-semibold text-green-600">{riskTable.resolved_risks}</span></span>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{dataFlowAnalysis.summary?.totalNodes || 0}</div>
-                    <div className="text-sm text-blue-600">Data Nodes</div>
-                  </div>
-                  <div className="bg-green-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{dataFlowAnalysis.summary?.totalEdges || 0}</div>
-                    <div className="text-sm text-green-600">Data Flows</div>
-                  </div>
-                  <div className="bg-yellow-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-yellow-600">{dataFlowAnalysis.summary?.privacyImplications || 0}</div>
-                    <div className="text-sm text-yellow-600">Privacy Issues</div>
-                  </div>
-                  <div className="bg-red-50 p-4 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">{dataFlowAnalysis.summary?.complianceRisks || 0}</div>
-                    <div className="text-sm text-red-600">Compliance Risks</div>
-                  </div>
-                </div>
-
-                {/* Data Flow Diagram */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-4">Data Flow Diagram</h3>
-                  <div className="flex flex-wrap gap-4 justify-center">
-                    {dataFlowAnalysis.dataFlow?.nodes?.map((node: any) => (
-                      <div
-                        key={node.id}
-                        className={`p-4 rounded-lg border-2 min-w-[120px] text-center ${
-                          node.type === 'source' ? 'bg-green-100 border-green-300' :
-                          node.type === 'process' ? 'bg-blue-100 border-blue-300' :
-                          node.type === 'storage' ? 'bg-purple-100 border-purple-300' :
-                          'bg-orange-100 border-orange-300'
-                        }`}
-                      >
-                        <div className="font-semibold text-sm">{node.label}</div>
-                        <div className="text-xs text-gray-600 mt-1">
-                          {node.dataTypes?.join(', ')}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {/* Flow arrows */}
-                  <div className="flex justify-center mt-4">
-                    <div className="flex items-center space-x-2">
-                      {dataFlowAnalysis.dataFlow?.edges?.map((edge: any, index: number) => (
-                        <div key={index} className="flex items-center">
-                          <div className="text-xs bg-white px-2 py-1 rounded border">
-                            {edge.label}
-                          </div>
-                          <div className="mx-2 text-gray-400">→</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Privacy Implications */}
-                {dataFlowAnalysis.dataFlow?.privacyImplications?.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Privacy Implications</h3>
-                    <div className="space-y-2">
-                      {dataFlowAnalysis.dataFlow.privacyImplications.map((implication: any, index: number) => (
-                        <div key={index} className="bg-yellow-50 p-3 rounded-lg border border-yellow-200">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-yellow-800">{implication.type}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              implication.severity === 'high' ? 'bg-red-100 text-red-800' :
-                              implication.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-2 font-medium text-sm">Risk ID</th>
+                        <th className="text-left p-2 font-medium text-sm">Status</th>
+                        <th className="text-left p-2 font-medium text-sm">Regulation</th>
+                        <th className="text-left p-2 font-medium text-sm">Severity</th>
+                        <th className="text-left p-2 font-medium text-sm">Description</th>
+                        <th className="text-left p-2 font-medium text-sm">Evidence</th>
+                        <th className="text-left p-2 font-medium text-sm">Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {riskTable.risks.map((risk: any, index: number) => (
+                        <tr key={index} className="border-b hover:bg-muted/50">
+                          <td className="p-2 text-sm font-mono text-blue-600">{risk.risk_id}</td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              risk.risk_status === 'OPEN' 
+                                ? 'bg-red-100 text-red-800' 
+                                : 'bg-green-100 text-green-800'
                             }`}>
-                              {implication.severity}
+                              {risk.risk_status}
                             </span>
-                          </div>
-                          <p className="text-sm text-yellow-700 mt-1">{implication.description}</p>
-                          <p className="text-xs text-yellow-600 mt-1">Regulation: {implication.regulation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Compliance Risks */}
-                {dataFlowAnalysis.dataFlow?.complianceRisks?.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Compliance Risks</h3>
-                    <div className="space-y-2">
-                      {dataFlowAnalysis.dataFlow.complianceRisks.map((risk: any, index: number) => (
-                        <div key={index} className="bg-red-50 p-3 rounded-lg border border-red-200">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-red-800">{risk.type}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              risk.severity === 'high' ? 'bg-red-100 text-red-800' :
-                              risk.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          </td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              risk.regulation === 'COPPA' ? 'bg-blue-100 text-blue-800' :
+                              risk.regulation === 'HIPAA' ? 'bg-purple-100 text-purple-800' :
+                              risk.regulation === 'GDPR' ? 'bg-green-100 text-green-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {risk.regulation}
+                            </span>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              risk.severity === 'HIGH' ? 'bg-red-100 text-red-800' :
+                              risk.severity === 'MEDIUM' ? 'bg-yellow-100 text-yellow-800' :
                               'bg-green-100 text-green-800'
                             }`}>
                               {risk.severity}
                             </span>
-                          </div>
-                          <p className="text-sm text-red-700 mt-1">{risk.description}</p>
-                          <p className="text-xs text-red-600 mt-1">Mitigation: {risk.mitigation}</p>
-                        </div>
+                          </td>
+                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
+                            <div className="truncate" title={risk.description}>
+                              {risk.description}
+                            </div>
+                          </td>
+                          <td className="p-2 text-sm">
+                            <div className="space-y-1 max-w-xs">
+                              {risk.evidence.slice(0, 2).map((evidence: any, evidenceIndex: number) => (
+                                <div key={evidenceIndex} className="bg-muted p-2 rounded text-xs">
+                                  <div className="font-medium text-blue-600">{evidence.file}</div>
+                                  <div className="text-muted-foreground">Lines: {evidence.lines}</div>
+                                  <div className="mt-1 font-mono text-xs bg-background p-1 rounded border">
+                                    {evidence.content}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-2 text-sm text-muted-foreground max-w-xs">
+                            <div className="truncate" title={risk.recommendation}>
+                              {risk.recommendation}
+                            </div>
+                          </td>
+                        </tr>
                       ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recommendations */}
-                {dataFlowAnalysis.dataFlow?.recommendations?.length > 0 && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-3">Recommendations</h3>
-                    <div className="space-y-2">
-                      {dataFlowAnalysis.dataFlow.recommendations.map((rec: any, index: number) => (
-                        <div key={index} className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-blue-800">{rec.type}</span>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              rec.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {rec.priority}
-                            </span>
-                          </div>
-                          <p className="text-sm text-blue-700 mt-1">{rec.description}</p>
-                          <p className="text-xs text-blue-600 mt-1">Implementation: {rec.implementation}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                    </tbody>
+                  </table>
+                </div>
               </CardContent>
             </Card>
           )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
