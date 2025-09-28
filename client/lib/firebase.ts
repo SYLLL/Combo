@@ -649,4 +649,236 @@ export const syncProjectsToFirebase = async (userId: string) => {
   }
 };
 
+// Chat History Management Functions
+export interface ChatMessage {
+  id: string;
+  type: 'user' | 'ai' | 'system';
+  message: string;
+  timestamp: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  projectId: string;
+  riskId: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+  participants: string[]; // Array of user emails who participated
+}
+
+export const saveChatConversation = async (
+  projectId: string,
+  riskId: string,
+  messages: ChatMessage[],
+  participants: string[],
+  bearerToken: string
+) => {
+  try {
+    console.log('🔥 Saving chat conversation to Firebase...');
+    
+    const conversationId = `${projectId}-${riskId}`;
+    const conversation: ChatConversation = {
+      id: conversationId,
+      projectId,
+      riskId,
+      messages,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      participants
+    };
+
+    const documentData = {
+      fields: {
+        id: { stringValue: conversation.id },
+        projectId: { stringValue: conversation.projectId },
+        riskId: { stringValue: conversation.riskId },
+        messages: { 
+          arrayValue: {
+            values: conversation.messages.map(msg => ({
+              mapValue: {
+                fields: {
+                  id: { stringValue: msg.id },
+                  type: { stringValue: msg.type },
+                  message: { stringValue: msg.message },
+                  timestamp: { stringValue: msg.timestamp }
+                }
+              }
+            }))
+          }
+        },
+        createdAt: { stringValue: conversation.createdAt },
+        updatedAt: { stringValue: conversation.updatedAt },
+        participants: {
+          arrayValue: {
+            values: conversation.participants.map(email => ({ stringValue: email }))
+          }
+        }
+      }
+    };
+
+    const response = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb/documents/test/${conversationId}?key=${firebaseConfig.apiKey}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(documentData),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🔥 Firestore write error:', response.status, errorText);
+      console.error('🔥 Request details:', {
+        url: `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb/documents/test/${conversationId}?key=${firebaseConfig.apiKey}`,
+        method: 'PATCH',
+        bearerToken: bearerToken ? `${bearerToken.substring(0, 20)}...` : 'MISSING',
+        projectId: firebaseConfig.projectId,
+        conversationId
+      });
+      return { success: false, error: `Firestore write failed: ${response.status} - ${errorText}` };
+    }
+
+    console.log('🔥 Chat conversation saved successfully');
+    return { success: true, conversationId };
+  } catch (error: any) {
+    console.error('🔥 Error saving chat conversation:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const loadChatConversation = async (
+  projectId: string,
+  riskId: string,
+  bearerToken: string
+): Promise<{ success: boolean; conversation?: ChatConversation; error?: string }> => {
+  try {
+    console.log('🔥 Loading chat conversation from Firebase...');
+    
+    const conversationId = `${projectId}-${riskId}`;
+    
+    const response = await fetch(
+      `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb/documents/test/${conversationId}?key=${firebaseConfig.apiKey}`,
+      {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${bearerToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        console.log('🔥 No existing conversation found');
+        return { success: true, conversation: undefined };
+      }
+      const errorText = await response.text();
+      console.error('🔥 Firestore read error:', response.status, errorText);
+      return { success: false, error: `Firestore read failed: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const fields = data.fields;
+
+    const conversation: ChatConversation = {
+      id: fields.id?.stringValue || conversationId,
+      projectId: fields.projectId?.stringValue || projectId,
+      riskId: fields.riskId?.stringValue || riskId,
+      messages: fields.messages?.arrayValue?.values?.map((msg: any) => ({
+        id: msg.mapValue.fields.id.stringValue,
+        type: msg.mapValue.fields.type.stringValue,
+        message: msg.mapValue.fields.message.stringValue,
+        timestamp: msg.mapValue.fields.timestamp.stringValue
+      })) || [],
+      createdAt: fields.createdAt?.stringValue || new Date().toISOString(),
+      updatedAt: fields.updatedAt?.stringValue || new Date().toISOString(),
+      participants: fields.participants?.arrayValue?.values?.map((p: any) => p.stringValue) || []
+    };
+
+    console.log('🔥 Chat conversation loaded successfully:', conversation.messages.length, 'messages');
+    return { success: true, conversation };
+  } catch (error: any) {
+    console.error('🔥 Error loading chat conversation:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const testFirebaseConnection = async () => {
+  try {
+    console.log('🔥 Testing Firebase connection...');
+    console.log('🔥 Project ID:', firebaseConfig.projectId);
+    console.log('🔥 API Key:', firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING');
+    
+    // Test 1: Try to get a Bearer token
+    const tokenResult = await fetchBearerToken();
+    if (!tokenResult.success) {
+      console.error('🔥 Failed to get Bearer token:', tokenResult.error);
+      return { success: false, error: 'Bearer token failed', step: 'token' };
+    }
+    
+    console.log('🔥 Bearer token obtained successfully');
+    
+    // Test 2: Try to access the database root
+    const testUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb?key=${firebaseConfig.apiKey}`;
+    console.log('🔥 Testing database access:', testUrl);
+    
+    const response = await fetch(testUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenResult.idToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log('🔥 Database test response:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('🔥 Database access failed:', errorText);
+      return { success: false, error: `Database access failed: ${response.status} - ${errorText}`, step: 'database' };
+    }
+    
+    // Test 3: Try to create a test document in test collection
+    const testDocId = `test-${Date.now()}`;
+    const testDocUrl = `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb/documents/test/${testDocId}?key=${firebaseConfig.apiKey}`;
+    
+    const testDocData = {
+      fields: {
+        test: { stringValue: 'test-value' },
+        timestamp: { stringValue: new Date().toISOString() }
+      }
+    };
+    
+    console.log('🔥 Testing document creation:', testDocUrl);
+    
+    const docResponse = await fetch(testDocUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${tokenResult.idToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testDocData),
+    });
+    
+    console.log('🔥 Document creation response:', docResponse.status, docResponse.statusText);
+    
+    if (!docResponse.ok) {
+      const errorText = await docResponse.text();
+      console.error('🔥 Document creation failed:', errorText);
+      return { success: false, error: `Document creation failed: ${docResponse.status} - ${errorText}`, step: 'document' };
+    }
+    
+    console.log('🔥 All Firebase tests passed!');
+    return { success: true, message: 'Firebase connection working' };
+    
+  } catch (error: any) {
+    console.error('🔥 Firebase connection test failed:', error);
+    return { success: false, error: error.message, step: 'exception' };
+  }
+};
+
 export default app;

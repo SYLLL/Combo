@@ -1,4 +1,5 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   FileText,
   Upload,
@@ -14,6 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { saveChatConversation, loadChatConversation, fetchBearerToken, ChatMessage, ChatConversation, testFirebaseConnection } from "@/lib/firebase";
+import { useAuth } from "@/hooks/useAuth";
 
 interface AnalysisResult {
   status: "pending" | "good" | "questions" | "issues";
@@ -39,6 +42,8 @@ interface LegalReview {
 }
 
 export default function ComplianceReviewPage() {
+  const { currentUser } = useAuth();
+  const { projectId } = useParams<{ projectId: string }>();
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [productDescription, setProductDescription] = useState(
     "Adding a daily mode toggle to user profile",
@@ -83,6 +88,18 @@ export default function ComplianceReviewPage() {
   const [chatMessages, setChatMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<string>('');
+  const [chatParticipants, setChatParticipants] = useState<string[]>([]);
+
+  // Set project ID from URL parameter
+  useEffect(() => {
+    if (projectId) {
+      setCurrentProjectId(projectId);
+      console.log('🔥 Project ID set from URL:', projectId);
+    } else {
+      console.warn('🔥 No project ID found in URL');
+    }
+  }, [projectId]);
 
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
@@ -1640,16 +1657,75 @@ export default function ComplianceReviewPage() {
   };
 
   // Chat functionality functions
-  const openRiskChat = (risk: any) => {
+  const openRiskChat = async (risk: any) => {
     setSelectedRisk(risk);
-    setChatMessages([
-      {
-        id: 1,
-        type: 'system',
-        message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
-        timestamp: new Date()
+    
+    // Initialize participants with current user
+    const participants = currentUser?.email ? [currentUser.email] : [];
+    setChatParticipants(participants);
+    
+    // Try to load existing conversation from Firebase
+    if (currentProjectId) {
+      try {
+        const tokenResult = await fetchBearerToken();
+        if (tokenResult.success) {
+          const result = await loadChatConversation(currentProjectId, risk.risk_id, tokenResult.idToken);
+          if (result.success && result.conversation) {
+            // Load existing messages
+            const existingMessages = result.conversation.messages.map(msg => ({
+              id: msg.id,
+              type: msg.type,
+              message: msg.message,
+              timestamp: new Date(msg.timestamp)
+            }));
+            setChatMessages(existingMessages);
+            setChatParticipants(result.conversation.participants);
+          } else {
+            // No existing conversation, start with welcome message
+            setChatMessages([
+              {
+                id: 1,
+                type: 'system',
+                message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
+                timestamp: new Date()
+              }
+            ]);
+          }
+        } else {
+          // Fallback to welcome message if token fetch fails
+          setChatMessages([
+            {
+              id: 1,
+              type: 'system',
+              message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
+              timestamp: new Date()
+            }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error loading chat conversation:', error);
+        // Fallback to welcome message
+        setChatMessages([
+          {
+            id: 1,
+            type: 'system',
+            message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
+            timestamp: new Date()
+          }
+        ]);
       }
-    ]);
+    } else {
+      // No project context, start with welcome message
+      setChatMessages([
+        {
+          id: 1,
+          type: 'system',
+          message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
+          timestamp: new Date()
+        }
+      ]);
+    }
+    
     setChatModalOpen(true);
   };
 
@@ -1670,14 +1746,15 @@ export default function ComplianceReviewPage() {
       timestamp: new Date()
     };
 
-    setChatMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...chatMessages, userMessage];
+    setChatMessages(updatedMessages);
     setNewMessage('');
     setIsTyping(true);
 
     // Check if message contains @GreyMatter trigger
     if (newMessage.includes('@GreyMatter')) {
       // Simulate AI response delay
-      setTimeout(() => {
+      setTimeout(async () => {
         const aiResponse = generateAIResponse(newMessage, selectedRisk);
         const aiMessage = {
           id: Date.now() + 1,
@@ -1685,11 +1762,109 @@ export default function ComplianceReviewPage() {
           message: aiResponse,
           timestamp: new Date()
         };
-        setChatMessages(prev => [...prev, aiMessage]);
+        
+        const finalMessages = [...updatedMessages, aiMessage];
+        setChatMessages(finalMessages);
         setIsTyping(false);
+        
+        // Save conversation to Firebase
+        if (currentProjectId && currentUser?.email) {
+          try {
+            console.log('🔥 Attempting to save chat conversation...', {
+              projectId: currentProjectId,
+              riskId: selectedRisk.risk_id,
+              messageCount: finalMessages.length,
+              userEmail: currentUser.email
+            });
+            
+            const tokenResult = await fetchBearerToken();
+            if (tokenResult.success) {
+              const messagesToSave: ChatMessage[] = finalMessages.map(msg => ({
+                id: msg.id.toString(),
+                type: msg.type,
+                message: msg.message,
+                timestamp: msg.timestamp.toISOString()
+              }));
+              
+              const updatedParticipants = [...new Set([...chatParticipants, currentUser.email])];
+              setChatParticipants(updatedParticipants);
+              
+              const saveResult = await saveChatConversation(
+                currentProjectId,
+                selectedRisk.risk_id,
+                messagesToSave,
+                updatedParticipants,
+                tokenResult.idToken
+              );
+              
+              if (saveResult.success) {
+                console.log('🔥 Chat conversation saved successfully!', saveResult.conversationId);
+              } else {
+                console.error('🔥 Failed to save chat conversation:', saveResult.error);
+              }
+            } else {
+              console.error('🔥 Failed to get Bearer token for saving conversation');
+            }
+          } catch (error) {
+            console.error('Error saving chat conversation:', error);
+          }
+        } else {
+          console.warn('🔥 Cannot save conversation - missing projectId or user email:', {
+            projectId: currentProjectId,
+            userEmail: currentUser?.email
+          });
+        }
       }, 1500);
     } else {
       setIsTyping(false);
+      
+      // Save conversation to Firebase even for non-AI messages
+      if (currentProjectId && currentUser?.email) {
+        try {
+          console.log('🔥 Attempting to save non-AI chat conversation...', {
+            projectId: currentProjectId,
+            riskId: selectedRisk.risk_id,
+            messageCount: updatedMessages.length,
+            userEmail: currentUser.email
+          });
+          
+          const tokenResult = await fetchBearerToken();
+          if (tokenResult.success) {
+            const messagesToSave: ChatMessage[] = updatedMessages.map(msg => ({
+              id: msg.id.toString(),
+              type: msg.type,
+              message: msg.message,
+              timestamp: msg.timestamp.toISOString()
+            }));
+            
+            const updatedParticipants = [...new Set([...chatParticipants, currentUser.email])];
+            setChatParticipants(updatedParticipants);
+            
+            const saveResult = await saveChatConversation(
+              currentProjectId,
+              selectedRisk.risk_id,
+              messagesToSave,
+              updatedParticipants,
+              tokenResult.idToken
+            );
+            
+            if (saveResult.success) {
+              console.log('🔥 Non-AI chat conversation saved successfully!', saveResult.conversationId);
+            } else {
+              console.error('🔥 Failed to save non-AI chat conversation:', saveResult.error);
+            }
+          } else {
+            console.error('🔥 Failed to get Bearer token for saving non-AI conversation');
+          }
+        } catch (error) {
+          console.error('Error saving chat conversation:', error);
+        }
+      } else {
+        console.warn('🔥 Cannot save non-AI conversation - missing projectId or user email:', {
+          projectId: currentProjectId,
+          userEmail: currentUser?.email
+        });
+      }
     }
   };
 
@@ -1711,16 +1886,40 @@ export default function ComplianceReviewPage() {
     }
   };
 
+  const testFirebase = async () => {
+    console.log('🔥 Testing Firebase connection...');
+    const result = await testFirebaseConnection();
+    if (result.success) {
+      alert('✅ Firebase connection test passed!');
+    } else {
+      alert(`❌ Firebase test failed at step ${result.step}: ${result.error}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b bg-card px-4 sm:px-6 py-4">
-        <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
-          Combo AI
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
-          Streamline product requirements review and compliance analysis
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground">
+              Combo AI
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1 hidden sm:block">
+              Streamline product requirements review and compliance analysis
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={testFirebase} variant="outline" size="sm">
+              🔥 Test Firebase
+            </Button>
+            {currentUser && (
+              <div className="text-sm text-muted-foreground">
+                {currentUser.email}
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Main Content */}
@@ -2646,6 +2845,11 @@ export default function ComplianceReviewPage() {
               <div>
                 <h3 className="text-lg font-semibold">Risk Discussion: {selectedRisk.risk_id}</h3>
                 <p className="text-sm text-gray-600">{selectedRisk.regulation} - {selectedRisk.severity} Severity</p>
+                {chatParticipants.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Participants: {chatParticipants.join(', ')}
+                  </p>
+                )}
               </div>
               <button
                 onClick={closeChatModal}

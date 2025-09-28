@@ -84,6 +84,14 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
+    // Projects collection - users can read/write their own projects
+    match /test/{projectId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Chat conversations are stored in the test collection
+    // No additional rules needed since they're under /test/*
+    
     // For development, allow all access (change this in production)
     match /{document=**} {
       allow read, write: if true;

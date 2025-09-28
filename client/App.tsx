@@ -708,7 +708,7 @@ function ProductComplianceCouncil() {
                   View Details
                 </button>
                 <button 
-                  onClick={() => navigate('/compliance-review')}
+                  onClick={() => navigate(`/compliance-review/${project.id}`)}
                   style={{
                     padding: '8px 16px',
                     backgroundColor: '#10b981',
@@ -1188,6 +1188,7 @@ const App = () => (
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/compliance-council" element={<ProductComplianceCouncil />} />
+      <Route path="/compliance-review/:projectId" element={<ComplianceReviewPage />} />
       <Route path="/compliance-review" element={<ComplianceReviewPage />} />
         <Route path="*" element={<Index />} />
     </Routes>
