@@ -130,6 +130,9 @@ export interface Project {
   priority: 'Low' | 'Medium' | 'High';
   createdAt: string;
   userId: string;
+  legalPartnerEmail?: string;
+  legalUserId?: string;
+  isLegalPartner?: boolean; // Flag to indicate if user is viewing as legal partner
 }
 
 export const createProject = async (projectData: Omit<Project, 'id' | 'userId' | 'createdAt'>, userId: string) => {
@@ -432,7 +435,9 @@ export const createProjectREST = async (projectData: Omit<Project, 'id' | 'userI
         priority: { stringValue: project.priority },
         status: { stringValue: project.status },
         userId: { stringValue: userId },
-        createdAt: { stringValue: project.createdAt }
+        createdAt: { stringValue: project.createdAt },
+        ...(project.legalPartnerEmail && { legalPartnerEmail: { stringValue: project.legalPartnerEmail } }),
+        ...(project.legalUserId && { legalUserId: { stringValue: project.legalUserId } })
       }
     };
     
@@ -479,9 +484,10 @@ export const createProjectREST = async (projectData: Omit<Project, 'id' | 'userI
 };
 
 // Function to get user projects using direct REST API with fresh Bearer token
-export const getUserProjectsREST = async (userId: string, bearerToken: string) => {
+export const getUserProjectsREST = async (userId: string, userEmail: string, bearerToken: string) => {
   try {
     console.log('🔥 Getting user projects via REST API with fresh Bearer token...');
+    console.log('🔥 Looking for projects owned by:', userId, 'and legal partner projects for:', userEmail);
     
     const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
     const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
@@ -508,12 +514,15 @@ export const getUserProjectsREST = async (userId: string, bearerToken: string) =
     const result = await response.json();
     console.log('🔥 Projects retrieved via REST API:', result);
     
-    // Parse the response and filter by userId
+    // Parse the response and filter by userId or legalPartnerEmail
     const projects: Project[] = [];
     if (result.documents) {
       result.documents.forEach((doc: any) => {
         const fields = doc.fields;
-        if (fields && fields.userId && fields.userId.stringValue === userId) {
+        const isOwner = fields && fields.userId && fields.userId.stringValue === userId;
+        const isLegalPartner = fields && fields.legalPartnerEmail && fields.legalPartnerEmail.stringValue === userEmail;
+        
+        if (isOwner || isLegalPartner) {
           projects.push({
             id: doc.name.split('/').pop(),
             name: fields.name?.stringValue || '',
@@ -521,7 +530,10 @@ export const getUserProjectsREST = async (userId: string, bearerToken: string) =
             priority: fields.priority?.stringValue || 'Medium',
             status: fields.status?.stringValue || 'Draft',
             userId: fields.userId?.stringValue || userId,
-            createdAt: fields.createdAt?.stringValue || new Date().toISOString().split('T')[0]
+            createdAt: fields.createdAt?.stringValue || new Date().toISOString().split('T')[0],
+            legalPartnerEmail: fields.legalPartnerEmail?.stringValue || undefined,
+            legalUserId: fields.legalUserId?.stringValue || undefined,
+            isLegalPartner: isLegalPartner // Add flag to distinguish legal partner projects
           });
         }
       });
@@ -598,7 +610,9 @@ export const syncProjectsToFirebase = async (userId: string) => {
           name: project.name,
           description: project.description,
           priority: project.priority,
-          status: project.status
+          status: project.status,
+          legalPartnerEmail: project.legalPartnerEmail,
+          legalUserId: project.legalUserId
         }, userId, tokenResult.idToken);
         
         if (result.success) {

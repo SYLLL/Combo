@@ -22,7 +22,8 @@ function ProductComplianceCouncil() {
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High'
+    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    legalPartnerEmail: ''
   });
   
   // Don't redirect immediately - let the loading state handle it
@@ -51,7 +52,7 @@ function ProductComplianceCouncil() {
                  
                  if (tokenResult.success) {
                    // console.log('🔥 Using REST API with fresh Bearer token for project loading...');
-                   const result = await getUserProjectsREST(currentUser.uid, tokenResult.idToken);
+                   const result = await getUserProjectsREST(currentUser.uid, currentUser.email || '', tokenResult.idToken);
                    
                    if (result.success) {
                      setProjects(result.projects);
@@ -134,13 +135,15 @@ function ProductComplianceCouncil() {
           name: newProject.name,
           description: newProject.description,
           priority: newProject.priority,
-          status: 'Draft'
+          status: 'Draft',
+          legalPartnerEmail: newProject.legalPartnerEmail,
+          legalUserId: newProject.legalPartnerEmail // Use email as legalUserId for now
         }, currentUser.uid, tokenResult.idToken);
 
         // console.log('🔥 Project creation result:', result);
 
         if (result.success) {
-          setNewProject({ name: '', description: '', priority: 'Medium' });
+          setNewProject({ name: '', description: '', priority: 'Medium', legalPartnerEmail: '' });
           setShowNewProjectForm(false);
           // console.log('🔥 Project created successfully via REST API, ID:', result.projectId);
           
@@ -162,11 +165,13 @@ function ProductComplianceCouncil() {
         name: newProject.name,
         description: newProject.description,
         priority: newProject.priority,
-        status: 'Draft'
+        status: 'Draft',
+        legalPartnerEmail: newProject.legalPartnerEmail,
+        legalUserId: newProject.legalPartnerEmail // Use email as legalUserId for now
       }, currentUser.uid);
 
       if (result.success) {
-        setNewProject({ name: '', description: '', priority: 'Medium' });
+        setNewProject({ name: '', description: '', priority: 'Medium', legalPartnerEmail: '' });
         setShowNewProjectForm(false);
         alert('Project created successfully via SDK fallback!');
         await handleForceRefreshProjects();
@@ -202,7 +207,7 @@ function ProductComplianceCouncil() {
       
       if (tokenResult.success) {
         // console.log('🔥 Force refresh - using REST API with fresh Bearer token...');
-        const result = await getUserProjectsREST(currentUser.uid, tokenResult.idToken);
+        const result = await getUserProjectsREST(currentUser.uid, currentUser.email || '', tokenResult.idToken);
         
         if (result.success) {
           setProjects(result.projects);
@@ -457,6 +462,25 @@ function ProductComplianceCouncil() {
             </div>
             <div>
               <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
+                Legal Partner Email
+              </label>
+              <input
+                type="email"
+                value={newProject.legalPartnerEmail}
+                onChange={(e) => setNewProject({...newProject, legalPartnerEmail: e.target.value})}
+                placeholder="Enter legal partner's email address"
+                style={{
+                  width: '100%',
+                  height: '44px',
+                  padding: '0 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '8px', display: 'block' }}>
                 Description
               </label>
               <textarea
@@ -609,9 +633,24 @@ function ProductComplianceCouncil() {
               border: '1px solid #e5e7eb'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
-                  {project.name}
-                </h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937', margin: 0 }}>
+                    {project.name}
+                  </h3>
+                  {project.isLegalPartner && (
+                    <div style={{
+                      padding: '2px 8px',
+                      backgroundColor: '#f59e0b',
+                      color: 'white',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase'
+                    }}>
+                      Legal Partner
+                    </div>
+                  )}
+                </div>
                 <div style={{
                   padding: '4px 12px',
                   backgroundColor: getStatusColor(project.status) + '20',
@@ -627,6 +666,17 @@ function ProductComplianceCouncil() {
               <p style={{ color: '#6b7280', fontSize: '14px', lineHeight: '1.5', marginBottom: '16px' }}>
                 {project.description}
               </p>
+              
+              {project.legalPartnerEmail && (
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                    Legal Partner:
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    {project.legalPartnerEmail}
+                  </div>
+                </div>
+              )}
               
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{
