@@ -74,7 +74,12 @@ export default function ComplianceReviewPage() {
   const [dataFlowAnalysis, setDataFlowAnalysis] = useState(null);
   const [isAnalyzingDataFlow, setIsAnalyzingDataFlow] = useState(false);
   const [enhancedLegalReview, setEnhancedLegalReview] = useState(null);
-  const [riskTable, setRiskTable] = useState(null);
+  const [riskTable, setRiskTable] = useState({
+    total_risks: 0,
+    open_risks: 0,
+    resolved_risks: 0,
+    risks: []
+  });
   const [editableSchema, setEditableSchema] = useState(`{
   "email": {
     "type": "string",
@@ -89,6 +94,7 @@ export default function ComplianceReviewPage() {
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<string>('');
+  const [currentProject, setCurrentProject] = useState<any>(null);
   const [chatParticipants, setChatParticipants] = useState<string[]>([]);
 
   // Set project ID from URL parameter
@@ -96,10 +102,173 @@ export default function ComplianceReviewPage() {
     if (projectId) {
       setCurrentProjectId(projectId);
       console.log('🔥 Project ID set from URL:', projectId);
+      
+      // Load project details to determine user roles
+      loadProjectDetails(projectId);
     } else {
       console.warn('🔥 No project ID found in URL');
     }
   }, [projectId]);
+
+  // Load project details to determine user roles
+  const loadProjectDetails = async (projectId: string) => {
+    try {
+      console.log('🔥 Loading project details for:', projectId);
+      
+      // Try to fetch project from Firebase first
+      try {
+        const tokenResult = await fetchBearerToken();
+        if (tokenResult.success) {
+          // Fetch project from Firebase using REST API
+          const response = await fetch(
+            `https://firestore.googleapis.com/v1/projects/${firebaseConfig.projectId}/databases/combodb/documents/test/${projectId}?key=${firebaseConfig.apiKey}`,
+            {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${tokenResult.idToken}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+          
+          if (response.ok) {
+            const data = await response.json();
+            const fields = data.fields;
+            
+            console.log('🔥 Raw Firebase response:', data);
+            console.log('🔥 Firebase fields:', fields);
+            
+            const project = {
+              id: projectId,
+              name: fields.name?.stringValue || 'Unknown Project',
+              userId: fields.userId?.stringValue || 'unknown',
+              legalPartnerEmail: fields.legalPartnerEmail?.stringValue || null,
+              description: fields.description?.stringValue || 'No description'
+            };
+            
+            console.log('🔥 Parsed project data:', project);
+            setCurrentProject(project);
+            console.log('🔥 Project details loaded from Firebase:', project);
+            return;
+          }
+        }
+      } catch (error) {
+        console.log('🔥 Could not fetch from Firebase, using mock data:', error);
+      }
+      
+      // Fallback to mock project structure
+      // For testing purposes, let's assume the current user is a legal partner
+      const mockProject = {
+        id: projectId,
+        name: 'Current Project',
+        userId: 'productowner@example.com', // Different from current user
+        legalPartnerEmail: currentUser?.email || 'legal@example.com', // Current user is legal partner
+        description: 'Project description'
+      };
+      console.log('🔥 Using mock project data:', mockProject);
+      console.log('🔥 Current user email for mock:', currentUser?.email);
+      console.log('🔥 Mock project - userId:', mockProject.userId, 'legalPartnerEmail:', mockProject.legalPartnerEmail);
+      setCurrentProject(mockProject);
+      console.log('🔥 Project details loaded (mock):', mockProject);
+    } catch (error) {
+      console.error('🔥 Error loading project details:', error);
+    }
+  };
+
+  // Helper function to determine sender type
+  const getSenderInfo = (message: any) => {
+    console.log('🔥 Determining sender info for message:', {
+      messageType: message.type,
+      savedSenderRole: message.senderRole,
+      savedSenderEmail: message.senderEmail,
+      currentUserEmail: currentUser?.email
+    });
+    
+    if (message.type === 'system') {
+      return { 
+        type: 'system', 
+        label: 'System', 
+        color: 'text-yellow-600',
+        email: '',
+        displayText: 'System'
+      };
+    }
+    if (message.type === 'ai') {
+      return { 
+        type: 'ai', 
+        label: 'GreyMatter AI', 
+        color: 'text-purple-600',
+        email: '',
+        displayText: 'GreyMatter AI'
+      };
+    }
+    if (message.type === 'user') {
+      // Use saved sender role if available, otherwise fallback to dynamic determination
+      const savedRole = message.senderRole;
+      const senderEmail = message.senderEmail || currentUser?.email || 'unknown@example.com';
+      
+      if (savedRole === 'legal-partner') {
+        console.log('🔥 User identified as Legal Partner (from saved role)');
+        return { 
+          type: 'legal-partner', 
+          label: 'Legal Partner', 
+          color: 'text-blue-600',
+          email: senderEmail,
+          displayText: senderEmail
+        };
+      } else if (savedRole === 'product-owner') {
+        console.log('🔥 User identified as Product Owner (from saved role)');
+        return { 
+          type: 'product-owner', 
+          label: 'Product Owner', 
+          color: 'text-green-600',
+          email: senderEmail,
+          displayText: senderEmail
+        };
+      } else {
+        // Fallback to dynamic determination for old messages without saved role
+        console.log('🔥 No saved role, using dynamic determination');
+        const isLegalPartner = currentProject?.legalPartnerEmail === currentUser?.email;
+        const isProductOwner = currentProject?.userId === currentUser?.email;
+        
+        if (isLegalPartner) {
+          console.log('🔥 User identified as Legal Partner (dynamic)');
+          return { 
+            type: 'legal-partner', 
+            label: 'Legal Partner', 
+            color: 'text-blue-600',
+            email: senderEmail,
+            displayText: senderEmail
+          };
+        } else if (isProductOwner) {
+          console.log('🔥 User identified as Product Owner (dynamic)');
+          return { 
+            type: 'product-owner', 
+            label: 'Product Owner', 
+            color: 'text-green-600',
+            email: senderEmail,
+            displayText: senderEmail
+          };
+        } else {
+          console.log('🔥 User identified as Unknown User');
+          return { 
+            type: 'user', 
+            label: 'User', 
+            color: 'text-gray-600',
+            email: senderEmail,
+            displayText: senderEmail
+          };
+        }
+      }
+    }
+    return { 
+      type: 'unknown', 
+      label: 'Unknown', 
+      color: 'text-gray-600',
+      email: '',
+      displayText: 'Unknown'
+    };
+  };
 
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
@@ -1658,6 +1827,9 @@ export default function ComplianceReviewPage() {
 
   // Chat functionality functions
   const openRiskChat = async (risk: any) => {
+    console.log('🔥 Opening chat for risk:', risk.risk_id, 'in project:', currentProjectId);
+    console.log('🔥 Expected conversation ID format:', `${currentProjectId}-${risk.risk_id}`);
+    
     setSelectedRisk(risk);
     
     // Initialize participants with current user
@@ -1667,61 +1839,80 @@ export default function ComplianceReviewPage() {
     // Try to load existing conversation from Firebase
     if (currentProjectId) {
       try {
+        console.log('🔥 Attempting to load conversation for:', currentProjectId, risk.risk_id);
         const tokenResult = await fetchBearerToken();
         if (tokenResult.success) {
+          console.log('🔥 Bearer token obtained, calling loadChatConversation...');
           const result = await loadChatConversation(currentProjectId, risk.risk_id, tokenResult.idToken);
+          console.log('🔥 Conversation load result:', result);
+          
           if (result.success && result.conversation) {
             // Load existing messages
             const existingMessages = result.conversation.messages.map(msg => ({
               id: msg.id,
               type: msg.type,
               message: msg.message,
-              timestamp: new Date(msg.timestamp)
+              timestamp: new Date(msg.timestamp),
+              senderRole: msg.senderRole,
+              senderEmail: msg.senderEmail
             }));
+            console.log('🔥 Loaded existing messages:', existingMessages.length);
+            console.log('🔥 Message preview with roles:', existingMessages.slice(0, 2));
             setChatMessages(existingMessages);
             setChatParticipants(result.conversation.participants);
           } else {
             // No existing conversation, start with welcome message
+            console.log('🔥 No existing conversation found, starting fresh');
             setChatMessages([
               {
                 id: 1,
                 type: 'system',
                 message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
-                timestamp: new Date()
+                timestamp: new Date(),
+                senderRole: 'system',
+                senderEmail: ''
               }
             ]);
           }
         } else {
           // Fallback to welcome message if token fetch fails
+          console.log('🔥 Token fetch failed, using fallback');
           setChatMessages([
             {
               id: 1,
               type: 'system',
               message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
-              timestamp: new Date()
+              timestamp: new Date(),
+              senderRole: 'system',
+              senderEmail: ''
             }
           ]);
         }
       } catch (error) {
-        console.error('Error loading chat conversation:', error);
+        console.error('🔥 Error loading chat conversation:', error);
         // Fallback to welcome message
         setChatMessages([
           {
             id: 1,
             type: 'system',
             message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
-            timestamp: new Date()
+            timestamp: new Date(),
+            senderRole: 'system',
+            senderEmail: ''
           }
         ]);
       }
     } else {
       // No project context, start with welcome message
+      console.log('🔥 No project context, starting fresh');
       setChatMessages([
         {
           id: 1,
           type: 'system',
           message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
-          timestamp: new Date()
+          timestamp: new Date(),
+          senderRole: 'system',
+          senderEmail: ''
         }
       ]);
     }
@@ -1739,11 +1930,34 @@ export default function ComplianceReviewPage() {
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedRisk) return;
 
+    // Determine sender role based on current user and project
+    const determineSenderRole = () => {
+      if (!currentProject || !currentUser?.email) {
+        return 'unknown';
+      }
+      
+      const isLegalPartner = currentProject.legalPartnerEmail === currentUser.email;
+      const isProductOwner = currentProject.userId === currentUser.email;
+      
+      if (isLegalPartner) {
+        return 'legal-partner';
+      } else if (isProductOwner) {
+        return 'product-owner';
+      } else {
+        return 'unknown';
+      }
+    };
+
+    const senderRole = determineSenderRole();
+    console.log('🔥 Determined sender role:', senderRole, 'for user:', currentUser?.email);
+
     const userMessage = {
       id: Date.now(),
       type: 'user',
       message: newMessage,
-      timestamp: new Date()
+      timestamp: new Date(),
+      senderRole: senderRole,
+      senderEmail: currentUser?.email || ''
     };
 
     const updatedMessages = [...chatMessages, userMessage];
@@ -1760,7 +1974,9 @@ export default function ComplianceReviewPage() {
           id: Date.now() + 1,
           type: 'ai',
           message: aiResponse,
-          timestamp: new Date()
+          timestamp: new Date(),
+          senderRole: 'ai',
+          senderEmail: ''
         };
         
         const finalMessages = [...updatedMessages, aiMessage];
@@ -1774,7 +1990,8 @@ export default function ComplianceReviewPage() {
               projectId: currentProjectId,
               riskId: selectedRisk.risk_id,
               messageCount: finalMessages.length,
-              userEmail: currentUser.email
+              userEmail: currentUser.email,
+              senderRole: senderRole
             });
             
             const tokenResult = await fetchBearerToken();
@@ -1783,7 +2000,9 @@ export default function ComplianceReviewPage() {
                 id: msg.id.toString(),
                 type: msg.type,
                 message: msg.message,
-                timestamp: msg.timestamp.toISOString()
+                timestamp: msg.timestamp.toISOString(),
+                senderRole: msg.senderRole || 'unknown',
+                senderEmail: msg.senderEmail || ''
               }));
               
               const updatedParticipants = [...new Set([...chatParticipants, currentUser.email])];
@@ -1806,7 +2025,7 @@ export default function ComplianceReviewPage() {
               console.error('🔥 Failed to get Bearer token for saving conversation');
             }
           } catch (error) {
-            console.error('Error saving chat conversation:', error);
+            console.error('🔥 Error saving chat conversation:', error);
           }
         } else {
           console.warn('🔥 Cannot save conversation - missing projectId or user email:', {
@@ -1825,7 +2044,8 @@ export default function ComplianceReviewPage() {
             projectId: currentProjectId,
             riskId: selectedRisk.risk_id,
             messageCount: updatedMessages.length,
-            userEmail: currentUser.email
+            userEmail: currentUser.email,
+            senderRole: senderRole
           });
           
           const tokenResult = await fetchBearerToken();
@@ -1834,7 +2054,9 @@ export default function ComplianceReviewPage() {
               id: msg.id.toString(),
               type: msg.type,
               message: msg.message,
-              timestamp: msg.timestamp.toISOString()
+              timestamp: msg.timestamp.toISOString(),
+              senderRole: msg.senderRole || 'unknown',
+              senderEmail: msg.senderEmail || ''
             }));
             
             const updatedParticipants = [...new Set([...chatParticipants, currentUser.email])];
@@ -1857,7 +2079,7 @@ export default function ComplianceReviewPage() {
             console.error('🔥 Failed to get Bearer token for saving non-AI conversation');
           }
         } catch (error) {
-          console.error('Error saving chat conversation:', error);
+          console.error('🔥 Error saving chat conversation:', error);
         }
       } else {
         console.warn('🔥 Cannot save non-AI conversation - missing projectId or user email:', {
@@ -2169,7 +2391,7 @@ export default function ComplianceReviewPage() {
                   Facts
                 </h3>
                 <div className="space-y-2">
-                  {(enhancedLegalReview?.facts || legalReview.facts).map((fact, index) => (
+                  {(enhancedLegalReview?.facts || []).map((fact, index) => (
                     <p key={index} className="text-sm text-muted-foreground">
                       {fact}
                     </p>
@@ -2182,7 +2404,7 @@ export default function ComplianceReviewPage() {
                   Notes
                 </h3>
                 <div className="space-y-2">
-                  {(enhancedLegalReview?.notes || legalReview.notes).map((note, index) => (
+                  {(enhancedLegalReview?.notes || []).map((note, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">{note}</p>
@@ -2196,7 +2418,7 @@ export default function ComplianceReviewPage() {
                   Suggestions
                 </h3>
                 <div className="space-y-2">
-                  {(enhancedLegalReview?.suggestions || legalReview.suggestions).map((suggestion, index) => (
+                  {(enhancedLegalReview?.suggestions || []).map((suggestion, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">
@@ -2212,7 +2434,7 @@ export default function ComplianceReviewPage() {
                   Mitigations
                 </h3>
                 <div className="space-y-2">
-                  {(enhancedLegalReview?.mitigations || legalReview.mitigations).map((mitigation, index) => (
+                  {(enhancedLegalReview?.mitigations || []).map((mitigation, index) => (
                     <div key={index} className="flex items-start gap-2">
                       <div className="h-1.5 w-1.5 bg-muted-foreground rounded-full mt-2" />
                       <p className="text-sm text-muted-foreground">
@@ -2725,12 +2947,12 @@ export default function ComplianceReviewPage() {
         </div>
 
         {/* Generated Cards - Appear After Legal Review */}
-        {(riskTable || dataFlowAnalysis) && (
+        {(riskTable.total_risks > 0 || dataFlowAnalysis) && (
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-foreground mb-4">Generated Analysis Results</h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Risk Table Section */}
-              {riskTable && (
+              {riskTable.total_risks > 0 && (
             <Card className="lg:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -2861,27 +3083,38 @@ export default function ComplianceReviewPage() {
 
             {/* Chat Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-96">
-              {chatMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
+              {chatMessages.map((message) => {
+                const senderInfo = getSenderInfo(message);
+                return (
                   <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.type === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : message.type === 'ai'
-                        ? 'bg-gray-100 text-gray-800'
-                        : 'bg-yellow-100 text-yellow-800'
-                    }`}
+                    key={message.id}
+                    className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className="text-sm">{message.message}</div>
-                    <div className="text-xs opacity-70 mt-1">
-                      {message.timestamp.toLocaleTimeString()}
+                    <div className={`max-w-xs lg:max-w-md ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
+                      {/* Sender Label */}
+                      <div className={`text-xs font-medium mb-1 ${senderInfo.color}`}>
+                        {senderInfo.displayText}
+                      </div>
+                      
+                      {/* Message Bubble */}
+                      <div
+                        className={`px-4 py-2 rounded-lg ${
+                          message.type === 'user'
+                            ? 'bg-blue-500 text-white'
+                            : message.type === 'ai'
+                            ? 'bg-gray-100 text-gray-800'
+                            : 'bg-yellow-100 text-yellow-800'
+                        }`}
+                      >
+                        <div className="text-sm">{message.message}</div>
+                        <div className="text-xs opacity-70 mt-1">
+                          {message.timestamp.toLocaleTimeString()}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               
               {isTyping && (
                 <div className="flex justify-start">

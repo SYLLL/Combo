@@ -655,6 +655,8 @@ export interface ChatMessage {
   type: 'user' | 'ai' | 'system';
   message: string;
   timestamp: string;
+  senderRole?: 'legal-partner' | 'product-owner' | 'ai' | 'system';
+  senderEmail?: string;
 }
 
 export interface ChatConversation {
@@ -701,7 +703,9 @@ export const saveChatConversation = async (
                   id: { stringValue: msg.id },
                   type: { stringValue: msg.type },
                   message: { stringValue: msg.message },
-                  timestamp: { stringValue: msg.timestamp }
+                  timestamp: { stringValue: msg.timestamp },
+                  senderRole: { stringValue: msg.senderRole || 'unknown' },
+                  senderEmail: { stringValue: msg.senderEmail || '' }
                 }
               }
             }))
@@ -792,7 +796,9 @@ export const loadChatConversation = async (
         id: msg.mapValue.fields.id.stringValue,
         type: msg.mapValue.fields.type.stringValue,
         message: msg.mapValue.fields.message.stringValue,
-        timestamp: msg.mapValue.fields.timestamp.stringValue
+        timestamp: msg.mapValue.fields.timestamp.stringValue,
+        senderRole: msg.mapValue.fields.senderRole?.stringValue || 'unknown',
+        senderEmail: msg.mapValue.fields.senderEmail?.stringValue || ''
       })) || [],
       createdAt: fields.createdAt?.stringValue || new Date().toISOString(),
       updatedAt: fields.updatedAt?.stringValue || new Date().toISOString(),
