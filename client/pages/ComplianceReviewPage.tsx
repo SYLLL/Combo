@@ -77,6 +77,13 @@ export default function ComplianceReviewPage() {
   }
 }`);
 
+  // Chat functionality state
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [selectedRisk, setSelectedRisk] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+
   // Mock data matching the reference image
   const [analysis] = useState<AnalysisResult>({
     status: "good",
@@ -1632,6 +1639,78 @@ export default function ComplianceReviewPage() {
     };
   };
 
+  // Chat functionality functions
+  const openRiskChat = (risk: any) => {
+    setSelectedRisk(risk);
+    setChatMessages([
+      {
+        id: 1,
+        type: 'system',
+        message: `Welcome to the chat for Risk ${risk.risk_id}. I'm here to help you discuss this ${risk.severity.toLowerCase()} severity ${risk.regulation} compliance issue.`,
+        timestamp: new Date()
+      }
+    ]);
+    setChatModalOpen(true);
+  };
+
+  const closeChatModal = () => {
+    setChatModalOpen(false);
+    setSelectedRisk(null);
+    setChatMessages([]);
+    setNewMessage('');
+  };
+
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !selectedRisk) return;
+
+    const userMessage = {
+      id: Date.now(),
+      type: 'user',
+      message: newMessage,
+      timestamp: new Date()
+    };
+
+    setChatMessages(prev => [...prev, userMessage]);
+    setNewMessage('');
+    setIsTyping(true);
+
+    // Check if message contains @GreyMatter trigger
+    if (newMessage.includes('@GreyMatter')) {
+      // Simulate AI response delay
+      setTimeout(() => {
+        const aiResponse = generateAIResponse(newMessage, selectedRisk);
+        const aiMessage = {
+          id: Date.now() + 1,
+          type: 'ai',
+          message: aiResponse,
+          timestamp: new Date()
+        };
+        setChatMessages(prev => [...prev, aiMessage]);
+        setIsTyping(false);
+      }, 1500);
+    } else {
+      setIsTyping(false);
+    }
+  };
+
+  const generateAIResponse = (userMessage: string, risk: any): string => {
+    const responses = [
+      `Based on the ${risk.regulation} compliance issue "${risk.description}", I recommend focusing on ${risk.recommendation}. This is a ${risk.severity.toLowerCase()} severity risk that requires immediate attention.`,
+      `For this ${risk.regulation} violation, the evidence shows ${risk.evidence.map(e => e.content).join(', ')}. The key action items are: 1) Implement proper consent mechanisms, 2) Review data collection practices, 3) Update privacy policies.`,
+      `This ${risk.severity.toLowerCase()} risk in ${risk.regulation} compliance can be mitigated by following these steps: ${risk.recommendation}. The code evidence suggests the issue is in the data handling logic.`,
+      `Given the ${risk.regulation} compliance requirements and the ${risk.severity.toLowerCase()} severity of this issue, I suggest prioritizing the implementation of proper data protection measures as outlined in the recommendation.`
+    ];
+    
+    return responses[Math.floor(Math.random() * responses.length)];
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -2479,6 +2558,7 @@ export default function ComplianceReviewPage() {
                         <th className="text-left p-2 font-medium text-sm">Description</th>
                         <th className="text-left p-2 font-medium text-sm">Evidence</th>
                         <th className="text-left p-2 font-medium text-sm">Recommendation</th>
+                        <th className="text-left p-2 font-medium text-sm">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -2536,6 +2616,14 @@ export default function ComplianceReviewPage() {
                               {risk.recommendation}
                             </div>
                           </td>
+                          <td className="p-2 text-sm">
+                            <button
+                              onClick={() => openRiskChat(risk)}
+                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                            >
+                              💬 Chat
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -2548,6 +2636,88 @@ export default function ComplianceReviewPage() {
           </div>
         )}
       </div>
+
+      {/* Chat Modal */}
+      {chatModalOpen && selectedRisk && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <div>
+                <h3 className="text-lg font-semibold">Risk Discussion: {selectedRisk.risk_id}</h3>
+                <p className="text-sm text-gray-600">{selectedRisk.regulation} - {selectedRisk.severity} Severity</p>
+              </div>
+              <button
+                onClick={closeChatModal}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-96">
+              {chatMessages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      message.type === 'user'
+                        ? 'bg-blue-500 text-white'
+                        : message.type === 'ai'
+                        ? 'bg-gray-100 text-gray-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    <div className="text-sm">{message.message}</div>
+                    <div className="text-xs opacity-70 mt-1">
+                      {message.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {isTyping && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 text-gray-800 px-4 py-2 rounded-lg">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-4 border-t">
+              <div className="flex space-x-2">
+                <textarea
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message... Use @GreyMatter to get AI assistance"
+                  className="flex-1 p-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={2}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim()}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                💡 Tip: Type "@GreyMatter" in your message to get AI-powered assistance with this risk
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
