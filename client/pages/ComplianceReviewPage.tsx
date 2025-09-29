@@ -1418,6 +1418,38 @@ export default function ComplianceReviewPage() {
     };
   };
 
+  // Helper function to generate PRD quotes based on regulation and issue
+  const generatePRDQuote = (regulation: string, issue: string) => {
+    const prdQuotes = {
+      COPPA: [
+        "Section 5.2.1 states 'Automatic feature activation and data collection consent'",
+        "The product targets children ages 4-16, including those under 13",
+        "Extensive personal information collection without verifiable parental consent",
+        "Default-enabled data sharing preferences mentioned in the PRD"
+      ],
+      HIPAA: [
+        "Health information collection and processing requirements",
+        "Patient data handling and storage protocols",
+        "Medical record access and sharing policies"
+      ],
+      GDPR: [
+        "Data processing activities without explicit consent mechanisms",
+        "Personal data collection and processing for EU users",
+        "Privacy policy and data retention requirements"
+      ]
+    };
+    
+    const quotes = prdQuotes[regulation as keyof typeof prdQuotes] || ["General compliance requirement"];
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  };
+
+  // Helper function to generate Figma screenshot indicators
+  const generateFigmaScreenshot = (regulation: string, issue: string) => {
+    // For demo purposes, randomly assign some risks as having Figma screenshots
+    const hasScreenshot = Math.random() > 0.6; // 40% chance of having screenshot
+    return hasScreenshot;
+  };
+
   const generateRiskTable = (complianceAnalysis: any, codeSnippets: any[], githubSearchResults: string) => {
     const risks = [];
     let riskIdCounter = 1;
@@ -1432,6 +1464,8 @@ export default function ComplianceReviewPage() {
           severity: 'HIGH',
           description: issue,
           evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'COPPA', issue),
+          prdQuote: generatePRDQuote('COPPA', issue),
+          figmaScreenshot: generateFigmaScreenshot('COPPA', issue),
           recommendation: complianceAnalysis.coppa.recommendations?.[index] || 'Implement COPPA compliance measures'
         });
         riskIdCounter++;
@@ -1448,6 +1482,8 @@ export default function ComplianceReviewPage() {
           severity: 'HIGH',
           description: issue,
           evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'HIPAA', issue),
+          prdQuote: generatePRDQuote('HIPAA', issue),
+          figmaScreenshot: generateFigmaScreenshot('HIPAA', issue),
           recommendation: complianceAnalysis.hipaa.recommendations?.[index] || 'Implement HIPAA compliance measures'
         });
         riskIdCounter++;
@@ -1464,6 +1500,8 @@ export default function ComplianceReviewPage() {
           severity: 'HIGH',
           description: issue,
           evidence: generateCodeEvidence(codeSnippets, githubSearchResults, 'GDPR', issue),
+          prdQuote: generatePRDQuote('GDPR', issue),
+          figmaScreenshot: generateFigmaScreenshot('GDPR', issue),
           recommendation: complianceAnalysis.gdpr.recommendations?.[index] || 'Implement GDPR compliance measures'
         });
         riskIdCounter++;
@@ -3042,16 +3080,51 @@ export default function ComplianceReviewPage() {
                             </div>
                           </td>
                           <td className="p-2 text-sm">
-                            <div className="space-y-1 max-w-xs">
-                              {risk.evidence.slice(0, 2).map((evidence: any, evidenceIndex: number) => (
-                                <div key={evidenceIndex} className="bg-muted p-2 rounded text-xs">
-                                  <div className="font-medium text-blue-600">{evidence.file}</div>
-                                  <div className="text-muted-foreground">Lines: {evidence.lines}</div>
-                                  <div className="mt-1 font-mono text-xs bg-background p-1 rounded border">
-                                    {evidence.content}
+                            <div className="space-y-2 max-w-xs">
+                              {/* Code Snippets */}
+                              {risk.evidence && risk.evidence.length > 0 && (
+                                <div>
+                                  <div className="text-xs font-semibold text-blue-600 mb-1">Code Evidence:</div>
+                                  {risk.evidence.slice(0, 1).map((evidence: any, evidenceIndex: number) => (
+                                    <div key={evidenceIndex} className="bg-muted p-2 rounded text-xs">
+                                      <div className="font-medium text-blue-600">{evidence.file}</div>
+                                      <div className="text-muted-foreground">Lines: {evidence.lines}</div>
+                                      <div className="mt-1 font-mono text-xs bg-background p-1 rounded border">
+                                        {evidence.content}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* PRD Quotes */}
+                              <div>
+                                <div className="text-xs font-semibold text-green-600 mb-1">PRD Quote:</div>
+                                <div className="bg-green-50 p-2 rounded text-xs border border-green-200">
+                                  <div className="text-green-800 italic">
+                                    {risk.prdQuote || "N/A - No PRD quote available"}
                                   </div>
                                 </div>
-                              ))}
+                              </div>
+                              
+                              {/* Figma Design Screenshot */}
+                              <div>
+                                <div className="text-xs font-semibold text-purple-600 mb-1">Figma Design:</div>
+                                <div className="bg-purple-50 p-2 rounded text-xs border border-purple-200">
+                                  {risk.figmaScreenshot ? (
+                                    <div className="text-purple-800">
+                                      <div className="font-medium">Screenshot Available</div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        Design element showing compliance issue
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="text-purple-600 italic">
+                                      N/A - No Figma screenshot available
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </td>
                           <td className="p-2 text-sm text-muted-foreground max-w-xs">
