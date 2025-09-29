@@ -175,6 +175,28 @@ export default function ComplianceReviewPage() {
     }
   };
 
+  // Function to resolve a risk
+  const resolveRisk = (riskId: string) => {
+    setRiskTable(prevRiskTable => {
+      const updatedRisks = prevRiskTable.risks.map((risk: any) => {
+        if (risk.risk_id === riskId) {
+          return { ...risk, risk_status: 'RESOLVED' };
+        }
+        return risk;
+      });
+      
+      const openRisks = updatedRisks.filter((risk: any) => risk.risk_status === 'OPEN').length;
+      const resolvedRisks = updatedRisks.filter((risk: any) => risk.risk_status === 'RESOLVED').length;
+      
+      return {
+        ...prevRiskTable,
+        risks: updatedRisks,
+        open_risks: openRisks,
+        resolved_risks: resolvedRisks
+      };
+    });
+  };
+
   // Helper function to determine sender type
   const getSenderInfo = (message: any) => {
     console.log('🔥 Determining sender info for message:', {
@@ -3038,12 +3060,22 @@ export default function ComplianceReviewPage() {
                             </div>
                           </td>
                           <td className="p-2 text-sm">
-                            <button
-                              onClick={() => openRiskChat(risk)}
-                              className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
-                            >
-                              💬 Chat
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => openRiskChat(risk)}
+                                className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                              >
+                                💬 Chat
+                              </button>
+                              {risk.risk_status === 'OPEN' && (
+                                <button
+                                  onClick={() => resolveRisk(risk.risk_id)}
+                                  className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 transition-colors"
+                                >
+                                  ✅ Resolve
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
