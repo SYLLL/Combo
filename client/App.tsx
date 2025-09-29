@@ -1151,18 +1151,14 @@ function Index() {
         margin: '0 auto 60px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div style={{ 
-            width: '32px', 
-            height: '32px', 
-            background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
-            borderRadius: '8px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '16px'
-          }}>
-            🤖
-          </div>
+          <img 
+            src="/greymatter-logo.svg" 
+            alt="GreyMatter Logo" 
+            style={{ 
+              width: '32px', 
+              height: '32px'
+            }}
+          />
           <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>GreyMatter</span>
         </div>
         <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
