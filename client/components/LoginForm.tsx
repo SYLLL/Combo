@@ -225,14 +225,14 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
   return (
     <div className="w-full">
       <div className="flex items-center justify-center mb-6">
-        <div className="flex bg-muted rounded-lg p-1">
+        <div className="flex bg-black/20 rounded-lg p-1 border border-white/10">
           <button
             type="button"
             onClick={() => handleModeSwitch(false)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               !isSignUp 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white/10 text-white shadow-sm' 
+                : 'text-white/70 hover:text-white'
             }`}
           >
             Sign In
@@ -242,8 +242,8 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onClick={() => handleModeSwitch(true)}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               isSignUp 
-                ? 'bg-background text-foreground shadow-sm' 
-                : 'text-muted-foreground hover:text-foreground'
+                ? 'bg-white/10 text-white shadow-sm' 
+                : 'text-white/70 hover:text-white'
             }`}
           >
             Sign Up
@@ -254,7 +254,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         {isSignUp && (
           <div>
-            <label htmlFor="displayName" className="text-sm font-medium text-foreground mb-2 block">
+            <label htmlFor="displayName" className="text-sm font-medium text-white mb-2 block">
               Display Name
             </label>
             <Input
@@ -264,13 +264,13 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
               onChange={(e) => setDisplayName(e.target.value)}
               placeholder="Enter your full name"
               required={isSignUp}
-              className="h-11"
+              className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-purple-400"
             />
           </div>
         )}
         
         <div>
-          <label htmlFor="email" className="text-sm font-medium text-foreground mb-2 block">
+          <label htmlFor="email" className="text-sm font-medium text-white mb-2 block">
             Email Address
           </label>
           <Input
@@ -280,12 +280,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email address"
             required
-            className="h-11"
+            className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-purple-400"
           />
         </div>
         
         <div>
-          <label htmlFor="password" className="text-sm font-medium text-foreground mb-2 block">
+          <label htmlFor="password" className="text-sm font-medium text-white mb-2 block">
             Password
           </label>
           <Input
@@ -295,12 +295,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Enter your password"
             required
-            className="h-11"
+            className="h-11 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-purple-400"
           />
         </div>
 
         {error && (
-          <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-lg text-sm">
+          <div className="p-4 bg-red-500/20 border border-red-500/30 text-red-200 rounded-lg text-sm">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -311,7 +311,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         )}
 
         {signUpSuccess && (
-          <div className="p-4 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm">
+          <div className="p-4 bg-green-500/20 border border-green-500/30 text-green-200 rounded-lg text-sm">
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -326,7 +326,7 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
           className={`w-full h-11 font-medium ${
             signUpSuccess 
               ? 'bg-green-600 hover:bg-green-700 text-white' 
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+              : 'bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white'
           }`}
           disabled={loading || signUpSuccess}
         >
@@ -351,12 +351,12 @@ export const LoginForm = ({ onSuccess }: LoginFormProps) => {
         </Button>
 
         <div className="text-center pt-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-white/70">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}
             <button
               type="button"
               onClick={() => handleModeSwitch(!isSignUp)}
-              className="ml-1 text-primary hover:underline font-medium"
+              className="ml-1 text-purple-400 hover:text-purple-300 hover:underline font-medium"
             >
               {isSignUp ? 'Sign in here' : 'Sign up here'}
             </button>

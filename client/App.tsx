@@ -1135,48 +1135,114 @@ function Index() {
   return (
     <div style={{ 
       padding: '40px', 
-      backgroundColor: '#e0f2fe', 
-      color: '#0c4a6e', 
+      background: 'radial-gradient(circle at center, #1a1a2e 0%, #0f0f23 100%)',
+      color: 'white', 
       fontSize: '20px',
       minHeight: '100vh',
       textAlign: 'center'
     }}>
-      <h1 style={{ color: '#0369a1', fontSize: '36px', marginBottom: '20px' }}>
-        🎯 Combo AI - Product Compliance Council
-      </h1>
-      
+      {/* Header with Logo */}
       <div style={{ 
-        backgroundColor: 'white', 
-        padding: '30px', 
-        borderRadius: '12px', 
-        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-        maxWidth: '600px',
-        margin: '0 auto 20px'
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '60px',
+        maxWidth: '1200px',
+        margin: '0 auto 60px'
       }}>
-        <h2 style={{ color: '#1e293b', fontSize: '24px', marginBottom: '15px' }}>
-          Welcome! 🎉
-        </h2>
-        <p style={{ color: '#64748b', marginBottom: '20px' }}>
-          Sign up or sign in to access the compliance dashboard.
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            background: 'linear-gradient(135deg, #8b5cf6, #3b82f6)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '16px'
+          }}>
+            🤖
+          </div>
+          <span style={{ fontSize: '24px', fontWeight: 'bold', color: 'white' }}>GreyMatter</span>
+        </div>
+        <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+          <span style={{ color: 'white', fontSize: '16px' }}>Features</span>
+          <span style={{ color: 'white', fontSize: '16px' }}>Pricing</span>
+          <button style={{
+            background: '#8b5cf6',
+            color: 'white',
+            border: 'none',
+            padding: '8px 16px',
+            borderRadius: '6px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}>
+            📅 Book Demo
+          </button>
+        </div>
+      </div>
+
+      {/* Hero Section */}
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <h1 style={{ 
+          background: 'linear-gradient(90deg, #8b5cf6 0%, #3b82f6 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          fontSize: '48px',
+          fontWeight: 'bold',
+          marginBottom: '24px',
+          lineHeight: '1.2'
+        }}>
+          Welcome to GreyMatter AI
+        </h1>
         
+        <p style={{ 
+          color: 'white', 
+          fontSize: '18px', 
+          marginBottom: '40px',
+          maxWidth: '600px',
+          margin: '0 auto 60px',
+          lineHeight: '1.6'
+        }}>
+          GreyMatter is a compliance collaboration platform that surfaces regulatory risks in features, systems, and user flows before they're built. Get organized workspaces to resolve complex compliance decisions and balance product vision with legal obligations.
+        </p>
+      </div>
+      
+      {/* Login Form Card */}
+      <div style={{ 
+        background: 'rgba(255, 255, 255, 0.05)', 
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '40px', 
+        borderRadius: '16px', 
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
+        maxWidth: '500px',
+        margin: '0 auto'
+      }}>
+        <h2 style={{ 
+          color: 'white', 
+          fontSize: '28px', 
+          marginBottom: '16px',
+          fontWeight: '600'
+        }}>
+          Access Your Dashboard
+        </h2>
+        <p style={{ 
+          color: 'rgba(255, 255, 255, 0.7)', 
+          marginBottom: '32px',
+          fontSize: '16px'
+        }}>
+          Sign in to continue your compliance review
+        </p>
         
         {/* Firebase LoginForm component */}
         <LoginForm onSuccess={() => {
           navigate('/compliance-council');
         }} />
-      </div>
-      
-      <div style={{ 
-        backgroundColor: '#f1f5f9', 
-        padding: '20px', 
-        borderRadius: '8px',
-        maxWidth: '600px',
-        margin: '0 auto'
-      }}>
-        <p style={{ color: '#64748b', fontSize: '14px' }}>
-          ✅ React is working | ✅ Routing is working | ✅ Firebase Authentication enabled | ✅ Ready for login!
-        </p>
       </div>
     </div>
   );
