@@ -1422,25 +1422,46 @@ export default function ComplianceReviewPage() {
   const generatePRDQuote = (regulation: string, issue: string) => {
     const prdQuotes = {
       COPPA: [
-        "Section 5.2.1 states 'Automatic feature activation and data collection consent'",
-        "The product targets children ages 4-16, including those under 13",
-        "Extensive personal information collection without verifiable parental consent",
-        "Default-enabled data sharing preferences mentioned in the PRD"
+        "Section 5.2.1: 'Automatic feature activation and data collection consent' - The system automatically enables data collection features during user registration without explicit parental consent.",
+        "Section 3.1.2: 'User Profile Creation' - Children ages 4-16 can create profiles with full name, email, phone number, and home location without verifiable parental consent.",
+        "Section 3.2.1: 'Location Services' - Continuous GPS tracking is enabled by default for all users, including children under 13, without parental notification.",
+        "Section 3.3.1: 'Social Features' - Photo and video sharing capabilities are available to children without parental oversight or consent mechanisms.",
+        "Section 4.1.1: 'Data Collection' - The app collects persistent identifiers, behavioral data, and device information from children without COPPA-compliant consent.",
+        "Section 6.1: 'Analytics Integration' - Third-party analytics services collect user data from children without verifiable parental consent as required by COPPA.",
+        "Section 5.3.1: 'Default Settings' - Data sharing, location services, and communication features are enabled by default for all users, violating COPPA's opt-in requirements."
       ],
       HIPAA: [
-        "Health information collection and processing requirements",
-        "Patient data handling and storage protocols",
-        "Medical record access and sharing policies"
+        "Section 7.2: 'Health Data Collection' - The application collects health-related information including medical history, symptoms, and treatment data without proper HIPAA safeguards.",
+        "Section 8.1: 'Patient Information Storage' - Personal health information is stored in unencrypted databases accessible to third-party services without patient consent.",
+        "Section 6.3: 'Medical Record Access' - Healthcare providers can access patient data without proper authorization controls or audit trails.",
+        "Section 9.1: 'Data Sharing' - Health information is shared with analytics providers and marketing partners without explicit patient consent.",
+        "Section 7.4: 'Telehealth Features' - Video consultations and health monitoring features lack proper encryption and privacy protections required by HIPAA."
       ],
       GDPR: [
-        "Data processing activities without explicit consent mechanisms",
-        "Personal data collection and processing for EU users",
-        "Privacy policy and data retention requirements"
+        "Section 4.2: 'Data Processing Consent' - Personal data processing activities are initiated without explicit, informed, and unambiguous consent from EU data subjects.",
+        "Section 5.1: 'Data Minimization' - The application collects excessive personal information beyond what is necessary for the stated purpose, violating GDPR Article 5(1)(c).",
+        "Section 6.2: 'Right to Erasure' - No clear mechanism exists for users to request deletion of their personal data as required by GDPR Article 17.",
+        "Section 7.1: 'Data Portability' - Users cannot easily export their personal data in a structured, machine-readable format as mandated by GDPR Article 20.",
+        "Section 8.3: 'Privacy by Design' - The application architecture does not implement privacy by design principles, collecting data by default rather than by explicit consent.",
+        "Section 9.1: 'Data Retention' - Personal data is retained indefinitely without clear retention periods or automatic deletion mechanisms.",
+        "Section 10.2: 'Third-Party Transfers' - Personal data is transferred to third countries without adequate safeguards or explicit user consent."
       ]
     };
     
     const quotes = prdQuotes[regulation as keyof typeof prdQuotes] || ["General compliance requirement"];
-    return quotes[Math.floor(Math.random() * quotes.length)];
+    
+    // Try to find a quote that matches the issue content
+    const matchingQuote = quotes.find(quote => {
+      const issueLower = issue.toLowerCase();
+      const quoteLower = quote.toLowerCase();
+      
+      // Check for key terms that might match
+      const keyTerms = ['consent', 'data collection', 'location', 'analytics', 'sharing', 'privacy', 'encryption', 'retention', 'deletion'];
+      return keyTerms.some(term => issueLower.includes(term) && quoteLower.includes(term));
+    });
+    
+    // Return matching quote or random quote
+    return matchingQuote || quotes[Math.floor(Math.random() * quotes.length)];
   };
 
   // Helper function to generate Figma screenshot indicators
@@ -3102,7 +3123,7 @@ export default function ComplianceReviewPage() {
                                 <div className="text-xs font-semibold text-green-600 mb-1">PRD Quote:</div>
                                 <div className="bg-green-50 p-2 rounded text-xs border border-green-200">
                                   <div className="text-green-800 italic">
-                                    {risk.prdQuote || "N/A - No PRD quote available"}
+                                    {risk.prdQuote}
                                   </div>
                                 </div>
                               </div>
