@@ -1,0 +1,156 @@
+# Cloud Build Configuration for GreyMatter AI
+# Deploys to Cloud Run (Node.js server) + Firebase Hosting (static files)
+
+steps:
+  # Step 1: Build the Docker image for Cloud Run
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:$COMMIT_SHA'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - '--build-arg'
+      - 'PORT=8080'
+      - '--no-cache'
+      - '.'
+
+  # Step 2: Test the container locally
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "🧪 Testing container startup..."
+        docker run -d --name test-container -p 8080:8080 -e PORT=8080 gcr.io/$PROJECT_ID/greymatter-ai:$COMMIT_SHA
+        
+        echo "⏳ Waiting for container to start..."
+        sleep 15
+        
+        echo "🔍 Checking container logs..."
+        docker logs test-container
+        
+        echo "🧪 Testing health endpoint..."
+        curl -f http://localhost:8080/health || exit 1
+        
+        echo "🧪 Testing API ping endpoint..."
+        curl -f http://localhost:8080/api/ping || exit 1
+        
+        echo "🧹 Cleaning up test container..."
+        docker stop test-container
+        docker rm test-container
+        
+        echo "✅ Container test passed!"
+
+  # Step 3: Push images to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:$COMMIT_SHA'
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+
+  # Step 4: Deploy to Cloud Run (Node.js server on port 8080)
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'greymatter-ai-api'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--timeout'
+      - '300'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'PORT=8080,NODE_ENV=production'
+      - '--execution-environment'
+      - 'gen2'
+
+  # Step 5: Build React app for Firebase Hosting
+  - name: 'node:18'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "📦 Installing dependencies..."
+        npm ci
+        
+        echo "🏗️ Building React app..."
+        npm run build:client
+        
+        echo "📁 Preparing Firebase Hosting files..."
+        mkdir -p firebase-public
+        cp -r dist/spa/* firebase-public/
+        
+        echo "✅ React app built successfully"
+
+  # Step 6: Deploy to Firebase Hosting (static files only)
+  - name: 'gcr.io/$PROJECT_ID/firebase'
+    args:
+      - 'deploy'
+      - '--only'
+      - 'hosting'
+      - '--public'
+      - 'firebase-public'
+    dir: '.'
+
+  # Step 7: Verify both deployments
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "⏳ Waiting for deployments to be ready..."
+        sleep 30
+        
+        echo "🔍 Getting Cloud Run service URL..."
+        API_URL=$$(gcloud run services describe greymatter-ai-api --region=us-central1 --format='value(status.url)')
+        echo "🌐 API URL: $$API_URL"
+        
+        echo "🔍 Getting Firebase Hosting URL..."
+        FIREBASE_URL=$$(firebase hosting:channel:open --json 2>/dev/null | jq -r '.url' 2>/dev/null || echo "https://your-project.web.app")
+        echo "🌐 Firebase URL: $$FIREBASE_URL"
+        
+        echo "🧪 Testing Cloud Run API endpoints..."
+        curl -f --max-time 30 "$$API_URL/health" || exit 1
+        curl -f --max-time 30 "$$API_URL/api/ping" || exit 1
+        
+        echo "🧪 Testing Firebase Hosting..."
+        curl -f --max-time 30 "$$FIREBASE_URL/" || exit 1
+        
+        echo "✅ All deployments successful!"
+        echo "🔗 API Server: $$API_URL"
+        echo "🔗 Web App: $$FIREBASE_URL"
+
+# Configure logging and build options
+options:
+  logging: CLOUD_LOGGING_ONLY
+  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
+
+# Timeout for the entire build (30 minutes)
+timeout: '1800s'
+
+# Substitution variables
+substitutions:
+  _API_SERVICE_NAME: 'greymatter-ai-api'
+  _REGION: 'us-central1'
+  _PORT: '8080'
