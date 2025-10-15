@@ -1,0 +1,44 @@
+# Ultra-simple Cloud Build - Minimal Docker + Cloud Run
+steps:
+  # Step 1: Build minimal Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-f'
+      - 'Dockerfile.simple'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - '.'
+
+  # Step 2: Push to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+
+  # Step 3: Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'greymatter-ai'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+
+# Minimal build options
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+# Very short timeout
+timeout: '300s'
