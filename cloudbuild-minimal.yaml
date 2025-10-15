@@ -7,14 +7,14 @@ steps:
       - '-f'
       - 'Dockerfile.simple'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:minimal'
       - '.'
 
   # Step 2: Push to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: 
       - 'push'
-      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:minimal'
 
   # Step 3: Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
@@ -23,7 +23,7 @@ steps:
       - 'deploy'
       - 'greymatter-ai'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/greymatter-ai:latest'
+      - 'gcr.io/$PROJECT_ID/greymatter-ai:minimal'
       - '--region'
       - 'us-central1'
       - '--platform'
@@ -41,4 +41,4 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 # Very short timeout
-timeout: '300s'
+timeout: '600s'
