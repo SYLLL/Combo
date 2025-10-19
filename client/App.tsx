@@ -9,6 +9,7 @@ import { signInUser, signUpUser, createUserProfile, createProject, getUserProjec
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 import { LoginForm } from "./components/LoginForm";
 import ComplianceReviewPage from "./pages/ComplianceReviewPage";
+import PayPalPayment from "./components/PayPalPayment";
 
 // Product Compliance Council Page
 function ProductComplianceCouncil() {
@@ -393,7 +394,9 @@ function ProductComplianceCouncil() {
               Signed in as: {currentUser.email}
             </div>
           </div>
-        <button
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <PayPalPayment userEmail={currentUser.email} />
+          <button
             onClick={() => {
               setSigningOut(true);
               
@@ -426,6 +429,7 @@ function ProductComplianceCouncil() {
         >
             {signingOut ? 'Signing Out...' : 'Sign Out'}
         </button>
+        </div>
       </div>
       
       {/* New Project Form */}

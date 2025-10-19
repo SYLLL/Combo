@@ -7,6 +7,7 @@ import { handleUploadSettlements } from "./routes/settlements.js";
 import { testGeminiConnection } from "./routes/upload.js";
 import { analyzeFigmaFile } from "./routes/figma";
 import { handleAnalyzeDataFlow } from "./routes/data-flow";
+import { handlePayPalWebhook, handlePayPalVerification } from "./routes/paypal";
 
 export function createServer() {
   const app = express();
@@ -27,6 +28,10 @@ export function createServer() {
   app.post("/api/upload-settlements", handleUploadSettlements);
   app.post("/api/figma/analyze", analyzeFigmaFile);
   app.post("/api/analyze-data-flow", handleAnalyzeDataFlow);
+  
+  // PayPal webhook endpoints
+  app.post("/api/paypal/webhook", handlePayPalWebhook);
+  app.post("/api/paypal/verify", handlePayPalVerification);
 
   // Test endpoint for Gemini API
   app.get('/api/test-gemini', async (req, res) => {
